@@ -308,26 +308,61 @@
   color: #8b9099;
 }
 
-.progress-tabs-row {
+/* Category: pill segmented control (Overview / Body / …) */
+.progress-segment {
   display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  margin-bottom: 10px;
-  padding-bottom: 2px;
-  scrollbar-width: none;
+  align-items: stretch;
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: #2c2c2e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-sizing: border-box;
 }
 
-.progress-tabs-row::-webkit-scrollbar {
-  display: none;
+.progress-segment-tab {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 6px;
+  margin: 0;
+  background: transparent;
+  color: #9499a3;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.progress-tab {
-  flex-shrink: 0;
-  padding: 8px 14px;
+.progress-segment-tab--active {
+  background: #ff6f50;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(255, 111, 80, 0.35);
+}
+
+.progress-segment-tab:not(.progress-segment-tab--active):active {
+  color: #b8bcc4;
+}
+
+.progress-time-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.progress-time-tab {
+  flex: 1;
+  padding: 8px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #1e1e1e;
-  color: #b4b8c0;
+  color: #9a9ea6;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -335,16 +370,10 @@
   white-space: nowrap;
 }
 
-.progress-tab--active {
+.progress-time-tab--active {
   background: rgba(255, 111, 80, 0.16);
   border-color: rgba(255, 111, 80, 0.35);
   color: #ff6f50;
-}
-
-.progress-time-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
 }
 
 .progress-weight-card {
@@ -412,56 +441,151 @@
 }
 
 .progress-goals {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
-.progress-goals-title {
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.progress-goal {
+.progress-goals-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 14px;
 }
 
-.progress-goal:last-child {
+.progress-goals-head-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #ff6f50;
+  background: rgba(255, 111, 80, 0.12);
+  border: 1px solid rgba(255, 111, 80, 0.2);
+}
+
+.progress-goals-head-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.progress-goals-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.progress-goal-card {
+  border-radius: 16px;
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 14px 16px;
+  margin-bottom: 12px;
+}
+
+.progress-goal-card:last-of-type {
   margin-bottom: 0;
 }
 
-.progress-goal-head {
+.progress-goal-top {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.progress-goal-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+}
+
+.progress-goal-icon--weight {
+  background: rgba(120, 45, 38, 0.45);
+  color: #ff7a5c;
+  border: 1px solid rgba(255, 122, 92, 0.2);
+}
+
+.progress-goal-icon--strength {
+  background: rgba(75, 55, 120, 0.45);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+}
+
+.progress-goal-icon--activity {
+  background: rgba(25, 85, 58, 0.45);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.progress-goal-icon-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.progress-goal-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.progress-goal-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.progress-goal-sub {
+  margin: 0;
   font-size: 12px;
-  font-weight: 600;
-  color: #e4e6ea;
+  font-weight: 500;
+  color: #8f949c;
+  line-height: 1.3;
+}
+
+.progress-goal-pct {
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  line-height: 1.2;
+  padding-top: 1px;
 }
 
 .progress-goal-bar {
-  height: 8px;
+  height: 9px;
   border-radius: 999px;
-  background: #2a2a2a;
+  background: #121214;
+  border: 1px solid rgba(255, 255, 255, 0.04);
   overflow: hidden;
 }
 
 .progress-goal-fill {
   height: 100%;
   border-radius: 999px;
-  width: 60%;
+  min-width: 4px;
+  transition: width 0.2s ease;
 }
 
 .progress-goal-fill--orange {
   background: #ff6f50;
+  box-shadow: 0 0 12px rgba(255, 111, 80, 0.35);
 }
 
 .progress-goal-fill--purple {
-  background: #8b7cf6;
+  background: #a78bfa;
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.3);
 }
 
 .progress-goal-fill--green {
-  background: #26d07c;
+  background: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.28);
 }
 
 .progress-photos-head {
@@ -534,4 +658,1058 @@
   width: 24px;
   height: 24px;
   opacity: 0.7;
+}
+
+/* Weekly Workout Plan bottom sheet */
+.progress-plan-portal {
+  --progress-plan-nav-gap: calc(72px + max(6px, env(safe-area-inset-bottom, 0px)) + 8px);
+
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.progress-plan-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--progress-plan-nav-gap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.progress-plan-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--progress-plan-nav-gap);
+  display: flex;
+  flex-direction: column;
+  max-height: min(82vh, calc(100% - 88px));
+  min-height: 320px;
+  border-radius: 22px 22px 0 0;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: none;
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.progress-plan-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.progress-plan-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ff6f50;
+  line-height: 1.2;
+}
+
+.progress-plan-close {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: #3a3a3e;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.progress-plan-close:active {
+  opacity: 0.88;
+}
+
+.progress-plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 14px 14px 18px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: none;
+}
+
+.progress-plan-list::-webkit-scrollbar {
+  display: none;
+}
+
+.progress-plan-list li {
+  margin-bottom: 10px;
+}
+
+.progress-plan-list li:last-child {
+  margin-bottom: 0;
+}
+
+.progress-plan-row {
+  display: grid;
+  grid-template-columns: auto 1fr minmax(56px, auto);
+  align-items: center;
+  gap: 12px 14px;
+  padding: 14px 14px;
+  border-radius: 16px;
+  background: #252525;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.progress-plan-row--today {
+  border-color: rgba(255, 111, 80, 0.35);
+  box-shadow: 0 0 0 1px rgba(255, 111, 80, 0.12);
+}
+
+.progress-plan-row--done {
+  opacity: 0.92;
+}
+
+.progress-plan-status {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.progress-plan-status--done {
+  color: #ffffff;
+}
+
+.progress-plan-status-ico {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.progress-plan-main {
+  min-width: 0;
+}
+
+.progress-plan-main--btn {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  border-radius: 10px;
+}
+
+.progress-plan-main--btn:focus-visible {
+  outline: 2px solid rgba(255, 111, 80, 0.5);
+  outline-offset: 2px;
+}
+
+.progress-plan-day {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #8b9099;
+}
+
+.progress-plan-workout {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.progress-plan-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8f949c;
+}
+
+.progress-plan-clock {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.progress-plan-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.progress-plan-start {
+  border: 0;
+  padding: 8px 12px;
+  margin: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.12s ease, color 0.15s ease;
+}
+
+.progress-plan-start:hover {
+  background: rgba(255, 111, 80, 0.22);
+  color: #ffded6;
+}
+
+.progress-plan-start:active {
+  transform: scale(0.97);
+}
+
+.progress-plan-start:focus-visible {
+  outline: 2px solid #ff6f50;
+  outline-offset: 2px;
+}
+
+.progress-toast {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: #2a2a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f0f2f5;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  animation: progress-toast-in 0.22s ease;
+}
+
+@keyframes progress-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.progress-detail-portal {
+  --progress-detail-nav-gap: calc(72px + max(6px, env(safe-area-inset-bottom, 0px)) + 8px);
+
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  pointer-events: none;
+}
+
+.progress-detail-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--progress-detail-nav-gap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.progress-detail-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--progress-detail-nav-gap);
+  max-height: min(70vh, calc(100% - 80px));
+  border-radius: 20px 20px 0 0;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 18px 16px 20px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  pointer-events: auto;
+  overflow-y: auto;
+  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.progress-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.progress-detail-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  flex: 1;
+  min-width: 0;
+}
+
+.progress-detail-sub {
+  margin: 0 0 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9a9ea6;
+  line-height: 1.4;
+}
+
+.progress-detail-list {
+  margin: 0 0 20px;
+  padding-left: 18px;
+  color: #e2e4e9;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.progress-detail-list li {
+  margin-bottom: 8px;
+}
+
+.progress-detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.progress-detail-secondary {
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #2c2c2e;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.progress-detail-primary {
+  min-height: 48px;
+  border-radius: 14px;
+  border: 0;
+  background: #ff6f50;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.progress-detail-primary:active,
+.progress-detail-secondary:active {
+  opacity: 0.92;
+  transform: scale(0.99);
+}
+
+.progress-session {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: #0d0d0e;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(24px, env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+
+.progress-session-inner {
+  width: 100%;
+  max-width: 400px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+}
+
+.progress-session-label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #ff6f50;
+  text-transform: uppercase;
+}
+
+.progress-session-title {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.progress-session-sub {
+  margin: 0 0 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #9a9ea6;
+}
+
+.progress-session-timer {
+  margin: 0 auto 12px;
+  padding: 16px 24px;
+  border-radius: 16px;
+  background: #1a1a1c;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-session-timer-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #8b9099;
+  text-transform: uppercase;
+}
+
+.progress-session-timer-value {
+  font-size: 36px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #ff6f50;
+  letter-spacing: -0.02em;
+}
+
+.progress-session-started {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: #8f949c;
+}
+
+.progress-session-details {
+  margin: 0 0 24px;
+  padding: 0 0 0 18px;
+  text-align: left;
+  color: #e4e6ea;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.progress-session-details li {
+  margin-bottom: 8px;
+}
+
+.progress-session-finish {
+  min-height: 52px;
+  border-radius: 14px;
+  border: 0;
+  background: #ff6f50;
+  color: #ffffff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-bottom: 14px;
+}
+
+.progress-session-finish:active {
+  transform: scale(0.98);
+  opacity: 0.95;
+}
+
+.progress-session-note {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7078;
+  line-height: 1.45;
+}
+
+.progress-summary-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 280;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  pointer-events: none;
+}
+
+.progress-summary-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.progress-summary-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 340px);
+  border-radius: 20px;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 22px 20px 20px;
+  pointer-events: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.progress-summary-title {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #4ade80;
+  letter-spacing: -0.02em;
+}
+
+.progress-summary-line {
+  margin: 0 0 16px;
+  font-size: 15px;
+  color: #e8eaef;
+  line-height: 1.4;
+}
+
+.progress-summary-dl {
+  margin: 0 0 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.progress-summary-dl div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.progress-summary-dl dt {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8f949c;
+}
+
+.progress-summary-dl dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-summary-ok {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 0;
+  background: #ff6f50;
+  color: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.progress-summary-ok:active {
+  opacity: 0.92;
+}
+
+/* Daily Diet Plan bottom sheet */
+.progress-diet-portal {
+  --progress-diet-nav-gap: calc(72px + max(6px, env(safe-area-inset-bottom, 0px)) + 8px);
+
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.progress-diet-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--progress-diet-nav-gap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.progress-diet-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--progress-diet-nav-gap);
+  display: flex;
+  flex-direction: column;
+  max-height: min(85vh, calc(100% - 80px));
+  min-height: 300px;
+  border-radius: 22px 22px 0 0;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: none;
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.progress-diet-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.progress-diet-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ff9a7a;
+  line-height: 1.2;
+}
+
+.progress-diet-macros {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 14px 12px;
+}
+
+.progress-diet-macro-card {
+  border-radius: 14px;
+  background: #252525;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.progress-diet-macro-flame {
+  width: 18px;
+  height: 18px;
+  color: #ff8c5a;
+  margin-bottom: 2px;
+}
+
+.progress-diet-macro-value {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.progress-diet-macro-value--cal {
+  color: #ffffff;
+}
+
+.progress-diet-macro-value--protein {
+  color: #ff7b62;
+}
+
+.progress-diet-macro-value--carbs {
+  color: #c4b5fd;
+}
+
+.progress-diet-macro-value--fats {
+  color: #fcd34d;
+}
+
+.progress-diet-macro-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #8f949c;
+  letter-spacing: 0.04em;
+}
+
+.progress-diet-meals {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 14px 18px;
+  scrollbar-width: none;
+}
+
+.progress-diet-meals::-webkit-scrollbar {
+  display: none;
+}
+
+.progress-diet-meal-card {
+  border-radius: 16px;
+  background: #252525;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 14px 14px 16px;
+  margin-bottom: 10px;
+}
+
+.progress-diet-meal-card:last-child {
+  margin-bottom: 0;
+}
+
+.progress-diet-meal-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.progress-diet-meal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.progress-diet-meal-cal {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255, 111, 80, 0.35);
+  border: 1px solid rgba(255, 140, 110, 0.35);
+}
+
+.progress-diet-meal-time {
+  margin: 0 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9a9ea6;
+}
+
+.progress-diet-meal-clock {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.progress-diet-meal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress-diet-meal-list li {
+  position: relative;
+  padding-left: 14px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #e8eaef;
+  line-height: 1.4;
+}
+
+.progress-diet-meal-list li:last-child {
+  margin-bottom: 0;
+}
+
+.progress-diet-meal-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff6f50;
+}
+
+@media (max-width: 360px) {
+  .progress-diet-macros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Log workout sheet */
+.progress-log-portal {
+  --progress-log-nav-gap: calc(72px + max(6px, env(safe-area-inset-bottom, 0px)) + 8px);
+
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.progress-log-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--progress-log-nav-gap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.progress-log-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--progress-log-nav-gap);
+  display: flex;
+  flex-direction: column;
+  max-height: min(88vh, calc(100% - 72px));
+  min-height: 280px;
+  border-radius: 22px 22px 0 0;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: none;
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.progress-log-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.progress-log-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ff6f50;
+  line-height: 1.2;
+}
+
+.progress-log-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.progress-log-fields {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: none;
+}
+
+.progress-log-fields::-webkit-scrollbar {
+  display: none;
+}
+
+.progress-log-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b9099;
+}
+
+.progress-log-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: -6px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #252525;
+  color: #f4f5f7;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.progress-log-input::placeholder {
+  color: #6b7078;
+}
+
+.progress-log-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9ea6' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.progress-log-textarea {
+  resize: vertical;
+  min-height: 96px;
+  line-height: 1.45;
+}
+
+.progress-log-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(to top, #1e1e1e 70%, rgba(30, 30, 30, 0));
+}
+
+.progress-log-cancel {
+  flex: 1;
+  min-height: 48px;
+  border-radius: 999px;
+  border: 0;
+  background: #3a3a3e;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.progress-log-cancel:active {
+  opacity: 0.9;
+}
+
+.progress-log-submit {
+  flex: 1.15;
+  min-height: 48px;
+  border-radius: 999px;
+  border: 0;
+  background: #ff6f50;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.progress-log-submit:active {
+  opacity: 0.92;
+}
+
+.progress-log-submit-ico {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Logged workouts under each plan day */
+.progress-plan-day-logs {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0 0 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-plan-day-log {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  background: rgba(255, 111, 80, 0.08);
+  border: 1px solid rgba(255, 111, 80, 0.18);
+}
+
+.progress-plan-day-log-badge {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ff9a7a;
+  background: rgba(255, 111, 80, 0.2);
+}
+
+.progress-plan-day-log-when {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8f949c;
+  margin-bottom: 4px;
+}
+
+.progress-plan-day-log-main {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4f5f7;
+  letter-spacing: -0.02em;
+}
+
+.progress-plan-day-log-notes {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #c4c8cf;
+  line-height: 1.45;
 }

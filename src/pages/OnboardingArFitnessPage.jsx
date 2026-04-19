@@ -10,7 +10,7 @@ function OnboardingArFitnessPage() {
           subtitle="Use augmented reality to perfect your form and visualize exercises."
           currentStep={3}
           totalSteps={3}
-          nextPath="/gyms"
+          nextPath="/auth"
           buttonText="Get Started"
         />
       </section>

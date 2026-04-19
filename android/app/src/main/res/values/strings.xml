@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FitUp</string>
+    <string name="title_activity_main">FitUp</string>
+    <string name="package_name">com.fitup.app</string>
+    <string name="custom_url_scheme">com.fitup.app</string>
+</resources>

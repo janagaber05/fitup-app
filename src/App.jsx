@@ -7,6 +7,7 @@ import {
 import OnboardingPage from "./pages/OnboardingPage";
 import OnboardingExpertsPage from "./pages/OnboardingExpertsPage";
 import OnboardingArFitnessPage from "./pages/OnboardingArFitnessPage";
+import AuthPage from "./pages/AuthPage";
 import GymsPage from "./pages/GymsPage";
 import MembershipPage from "./pages/MembershipPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -17,6 +18,24 @@ import ProgressTrackingPage from "./pages/ProgressTrackingPage";
 import BookSessionPage from "./pages/BookSessionPage";
 import EmsTrainingPage from "./pages/EmsTrainingPage";
 import "./App.css";
+
+const SESSION_KEY = "fitup-auth-session";
+
+function getSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.email || !parsed.memberId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function PrivateRoute({ children }) {
+  return getSession() ? children : <Navigate to="/auth" replace />;
+}
 
 function App() {
   return (
@@ -30,19 +49,20 @@ function App() {
             path="/onboarding-ar-fitness"
             element={<OnboardingArFitnessPage />}
           />
-          <Route path="/gyms" element={<GymsPage />} />
-          <Route path="/progress" element={<ProgressTrackingPage />} />
-          <Route path="/my-gym" element={<MyGymPage />} />
-          <Route path="/membership" element={<MembershipPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/gyms" element={<PrivateRoute><GymsPage /></PrivateRoute>} />
+          <Route path="/progress" element={<PrivateRoute><ProgressTrackingPage /></PrivateRoute>} />
+          <Route path="/my-gym" element={<PrivateRoute><MyGymPage /></PrivateRoute>} />
+          <Route path="/membership" element={<PrivateRoute><MembershipPage /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
           <Route
             path="/announcements"
             element={<Navigate to="/updates" replace />}
           />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/updates" element={<AnnouncementsPage />} />
-          <Route path="/book" element={<BookSessionPage />} />
-          <Route path="/ems-training" element={<EmsTrainingPage />} />
+          <Route path="/notifications" element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
+          <Route path="/updates" element={<PrivateRoute><AnnouncementsPage /></PrivateRoute>} />
+          <Route path="/book" element={<PrivateRoute><BookSessionPage /></PrivateRoute>} />
+          <Route path="/ems-training" element={<PrivateRoute><EmsTrainingPage /></PrivateRoute>} />
         </Routes>
       </div>
     </BrowserRouter>
