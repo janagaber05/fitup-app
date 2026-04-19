@@ -1,38 +1,20 @@
-.App {
-  text-align: center;
+.app-phone-shell {
+  position: relative;
+  width: min(100%, 430px);
+  margin-inline: auto;
+  height: 100vh;
+  height: 100dvh;
+  max-height: min(932px, 100dvh);
+  overflow: hidden;
+  background: #121212;
+  /* Keeps `position: fixed` (e.g. coach chat) inside this frame, not the full browser */
+  transform: translateZ(0);
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+@media (min-width: 768px) {
+  .app-phone-shell {
+    height: min(932px, calc(100dvh - 32px));
+    border-radius: 30px;
+    box-shadow: 0 20px 46px rgba(0, 0, 0, 0.42);
   }
 }

@@ -1,0 +1,212 @@
+.announcements-page {
+  position: relative;
+  height: 100%;
+  min-height: 100%;
+  background: #121212;
+  color: #ffffff;
+}
+
+.announcements-scroll {
+  position: relative;
+  z-index: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px 14px calc(72px + env(safe-area-inset-bottom, 0px) + 28px);
+  scrollbar-width: none;
+}
+
+.announcements-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.ann-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 10px;
+}
+
+.ann-back {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-left: -6px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.ann-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.ann-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 -14px 12px;
+}
+
+.ann-filters {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 16px;
+  scrollbar-width: none;
+}
+
+.ann-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.ann-chip {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  background: #1e1e1e;
+  color: #9e9e9e;
+}
+
+.ann-chip-active {
+  background: #ff6f50;
+  color: #ffffff;
+}
+
+.ann-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ann-card {
+  border-radius: 16px;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 14px 12px;
+}
+
+.ann-card-featured {
+  border-color: rgba(255, 111, 80, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 111, 80, 0.12);
+}
+
+.ann-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ann-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ann-tag-svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.ann-pill-urgent {
+  background: rgba(220, 80, 70, 0.22);
+  color: #e87064;
+  border: 1px solid rgba(232, 112, 100, 0.25);
+}
+
+.ann-pill-offers {
+  background: rgba(46, 180, 110, 0.18);
+  color: #4cd395;
+  border: 1px solid rgba(76, 211, 149, 0.22);
+}
+
+.ann-pill-updates {
+  background: rgba(50, 130, 230, 0.18);
+  color: #5aaef7;
+  border: 1px solid rgba(90, 174, 247, 0.22);
+}
+
+.ann-time {
+  font-size: 11px;
+  font-weight: 500;
+  color: #9e9e9e;
+  flex-shrink: 0;
+}
+
+.ann-card-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #ffffff;
+}
+
+.ann-card-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+  color: #9e9e9e;
+}
+
+.ann-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.ann-read-more {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff6f50;
+  cursor: pointer;
+}
+
+.ann-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ann-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #9e9e9e;
+  cursor: pointer;
+}
+
+.ann-icon-btn:active {
+  color: #c8c8c8;
+}

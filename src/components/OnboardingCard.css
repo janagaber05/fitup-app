@@ -1,0 +1,41 @@
+.onboarding-card {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 28px 28px 0 0;
+  padding: 14px 22px 16px;
+  text-align: center;
+  color: #f7f8fb;
+  background: #181a21;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.onboarding-title {
+  margin: 12px 0 10px;
+  font-size: clamp(22px, 5.2vw, 32px);
+  line-height: 1.16;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.onboarding-subtitle {
+  margin: 0 6px 24px;
+  color: #8d93a0;
+  font-size: clamp(13px, 3.2vw, 17px);
+  line-height: 1.45;
+}
+
+.onboarding-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border-radius: 999px;
+  padding: 16px 14px;
+  background: #ff6a4b;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: clamp(18px, 4.2vw, 22px);
+  font-weight: 700;
+}

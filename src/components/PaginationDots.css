@@ -1,0 +1,39 @@
+.dots-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: width 260ms ease, background-color 260ms ease,
+    transform 260ms ease;
+}
+
+.dot-active {
+  width: 30px;
+  background: #ff6a4b;
+  transform: translateZ(0);
+  animation: dot-activate 320ms ease-out;
+}
+
+@keyframes dot-activate {
+  0% {
+    opacity: 0.5;
+    width: 7px;
+    transform: scale(0.9);
+  }
+  65% {
+    opacity: 1;
+    width: 34px;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    width: 30px;
+    transform: scale(1);
+  }
+}

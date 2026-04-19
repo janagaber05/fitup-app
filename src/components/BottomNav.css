@@ -1,0 +1,96 @@
+.bottom-nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  min-height: 72px;
+  padding: 6px 6px max(6px, env(safe-area-inset-bottom, 0px));
+  background: #1e1e1e;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.bottom-nav .nav-tab {
+  border: 0;
+  background: transparent;
+  color: #a3a3a3;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 2px 0 0;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.nav-icon-wrap {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  color: currentColor;
+}
+
+.nav-icon-bell {
+  overflow: visible;
+}
+
+.nav-bell-dot {
+  fill: #ff6f50;
+  stroke: #1e1e1e;
+  stroke-width: 1.5px;
+}
+
+.nav-tab:not(.active-tab) .nav-bell-dot {
+  fill: #ff6f50;
+  stroke: #1e1e1e;
+  opacity: 0.95;
+}
+
+.nav-label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: currentColor;
+  text-align: center;
+  line-height: 1.15;
+  max-width: 100%;
+}
+
+.nav-label-notifications {
+  font-size: 8px;
+}
+
+.nav-tab.active-tab {
+  color: #ff6f50;
+  background: transparent;
+}
+
+.nav-tab.active-tab .nav-label {
+  font-weight: 600;
+}
+
+.nav-tab.active-tab .nav-icon-wrap {
+  background: #342c29;
+  border: 1px solid rgba(255, 111, 80, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.nav-tab.active-tab .nav-icon {
+  color: #ff6f50;
+}
