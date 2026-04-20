@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import "./ProgressTrackingPage.css";
@@ -16,7 +16,28 @@ const TIME_TABS = [
   { id: "year", label: "Year" },
 ];
 
-const CHART_DAYS = ["Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const ANALYTICS_BY_CATEGORY = {
+  overview: {
+    week: { title: "CURRENT WEIGHT", value: "77.2kg", trend: "-1.3 kg", labels: ["Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], values: [78.7, 78.3, 78.0, 77.5, 77.0, 76.7] },
+    month: { title: "CURRENT WEIGHT", value: "77.2kg", trend: "-3.8 kg", labels: ["W1", "W2", "W3", "W4", "W5", "W6"], values: [80.4, 79.9, 79.3, 78.6, 77.9, 77.2] },
+    year: { title: "CURRENT WEIGHT", value: "77.2kg", trend: "-8.6 kg", labels: ["Jan", "Mar", "May", "Jul", "Sep", "Nov"], values: [85.8, 83.9, 82.0, 80.4, 78.8, 77.2] },
+  },
+  body: {
+    week: { title: "BODY FAT", value: "18.9%", trend: "-0.7%", labels: ["Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], values: [19.8, 19.6, 19.4, 19.2, 19.0, 18.9] },
+    month: { title: "BODY FAT", value: "18.9%", trend: "-2.1%", labels: ["W1", "W2", "W3", "W4", "W5", "W6"], values: [21.0, 20.6, 20.1, 19.7, 19.2, 18.9] },
+    year: { title: "BODY FAT", value: "18.9%", trend: "-6.4%", labels: ["Jan", "Mar", "May", "Jul", "Sep", "Nov"], values: [25.3, 23.9, 22.8, 21.4, 20.2, 18.9] },
+  },
+  strength: {
+    week: { title: "SQUAT 1RM", value: "124kg", trend: "+4kg", labels: ["Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], values: [117, 118, 119, 120, 122, 124] },
+    month: { title: "SQUAT 1RM", value: "124kg", trend: "+11kg", labels: ["W1", "W2", "W3", "W4", "W5", "W6"], values: [113, 114, 116, 118, 121, 124] },
+    year: { title: "SQUAT 1RM", value: "124kg", trend: "+29kg", labels: ["Jan", "Mar", "May", "Jul", "Sep", "Nov"], values: [95, 101, 108, 113, 118, 124] },
+  },
+  cardio: {
+    week: { title: "5K TIME", value: "24m 10s", trend: "-0m 35s", labels: ["Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], values: [26.4, 26.0, 25.6, 25.2, 24.7, 24.2] },
+    month: { title: "5K TIME", value: "24m 10s", trend: "-1m 40s", labels: ["W1", "W2", "W3", "W4", "W5", "W6"], values: [27.1, 26.7, 26.2, 25.6, 24.9, 24.2] },
+    year: { title: "5K TIME", value: "24m 10s", trend: "-4m 20s", labels: ["Jan", "Mar", "May", "Jul", "Sep", "Nov"], values: [28.5, 27.7, 26.8, 25.8, 25.0, 24.2] },
+  },
+};
 
 const PHOTO_URLS = [
   "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=70",
@@ -35,12 +56,18 @@ const WEEKLY_PLAN = [
 ];
 
 const WORKOUT_LOG_STORAGE_KEY = "fitup-progress-workout-logs";
+const PROGRESS_PHOTOS_STORAGE_KEY = "fitup-progress-photos";
 
 /** getDay(): 0 Sun … 6 Sat → plan row ids */
 const PLAN_IDS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 function getTodayPlanId() {
   return PLAN_IDS[new Date().getDay()];
+}
+
+function getNextPlanId() {
+  const todayIdx = new Date().getDay();
+  return PLAN_IDS[(todayIdx + 1) % PLAN_IDS.length];
 }
 
 function formatTodayTitle() {
@@ -77,6 +104,17 @@ function loadWorkoutLogs() {
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
+  }
+}
+
+function loadProgressPhotos() {
+  try {
+    const raw = localStorage.getItem(PROGRESS_PHOTOS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return [];
   }
 }
 
@@ -188,15 +226,18 @@ function ProgressTrackingPage() {
   const [logDuration, setLogDuration] = useState("60");
   const [logNotes, setLogNotes] = useState("");
   const [dayLogs, setDayLogs] = useState(loadWorkoutLogs);
+  const [uploadedPhotos, setUploadedPhotos] = useState(loadProgressPhotos);
   const [planDays, setPlanDays] = useState(() => WEEKLY_PLAN.map((r) => ({ ...r })));
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
+  const photoInputRef = useRef(null);
   const [detailDay, setDetailDay] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
   const [sessionNow, setSessionNow] = useState(() => Date.now());
   const [finishSummary, setFinishSummary] = useState(null);
 
   const todayId = getTodayPlanId();
+  const nextPlanId = getNextPlanId();
 
   const showToast = useCallback((message) => {
     setToast(message);
@@ -233,6 +274,14 @@ function ProgressTrackingPage() {
     }
   }, [dayLogs]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROGRESS_PHOTOS_STORAGE_KEY, JSON.stringify(uploadedPhotos));
+    } catch {
+      /* ignore quota */
+    }
+  }, [uploadedPhotos]);
+
   const submitWorkoutLog = useCallback(
     (e) => {
       e.preventDefault();
@@ -261,6 +310,30 @@ function ProgressTrackingPage() {
       showToast(`Logged for ${dayLabel}. Open Plan to see it on that day.`);
     },
     [logWorkoutType, logDuration, logNotes, logDayId, planDays, showToast],
+  );
+
+  const triggerPhotoPicker = useCallback(() => {
+    if (!photoInputRef.current) return;
+    photoInputRef.current.click();
+  }, []);
+
+  const handlePhotoUpload = useCallback(
+    (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+      files.forEach((file) => {
+        if (!file.type.startsWith("image/")) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result !== "string") return;
+          setUploadedPhotos((prev) => [reader.result, ...prev].slice(0, 18));
+        };
+        reader.readAsDataURL(file);
+      });
+      e.target.value = "";
+      showToast("Photo added to progress.");
+    },
+    [showToast],
   );
 
   const handlePlanRowClick = useCallback(
@@ -302,6 +375,13 @@ function ProgressTrackingPage() {
     },
     [todayId, showToast],
   );
+
+  const viewNextWorkout = useCallback(() => {
+    const next = planDays.find((d) => d.id === nextPlanId) || planDays[0] || null;
+    if (!next) return;
+    setPlanOpen(true);
+    setDetailDay(next);
+  }, [planDays, nextPlanId]);
 
   const finishWorkout = useCallback(() => {
     if (!activeSession) return;
@@ -364,6 +444,37 @@ function ProgressTrackingPage() {
   useEffect(() => () => toastTimer.current && clearTimeout(toastTimer.current), []);
 
   const elapsedMs = activeSession ? sessionNow - activeSession.startedAt : 0;
+  const selectedAnalytics =
+    ANALYTICS_BY_CATEGORY[category]?.[timeRange] || ANALYTICS_BY_CATEGORY.overview.week;
+
+  const chartGeometry = useMemo(() => {
+    const values = selectedAnalytics.values;
+    const labels = selectedAnalytics.labels;
+    if (!values || values.length === 0) return { labels: [], linePoints: "", areaPath: "", points: [] };
+
+    const left = 10;
+    const right = 310;
+    const top = 20;
+    const bottom = 94;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const spread = max - min || 1;
+
+    const points = values.map((v, i) => {
+      const x = left + (i * (right - left)) / Math.max(values.length - 1, 1);
+      const y = bottom - ((v - min) / spread) * (bottom - top);
+      return { x, y };
+    });
+
+    const linePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
+    const first = points[0];
+    const last = points[points.length - 1];
+    const areaPath = `M ${first.x} ${first.y} ${points
+      .slice(1)
+      .map((p) => `L ${p.x} ${p.y}`)
+      .join(" ")} L ${last.x} 110 L ${first.x} 110 Z`;
+    return { labels, linePoints, areaPath, points };
+  }, [selectedAnalytics]);
 
   useEffect(() => {
     if (!activeSession) return undefined;
@@ -415,7 +526,7 @@ function ProgressTrackingPage() {
                 </span>
               </div>
             </div>
-            <button type="button" className="progress-next-view">
+            <button type="button" className="progress-next-view" onClick={viewNextWorkout}>
               <svg className="progress-next-play" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   d="M10.5 8.5L17 12l-6.5 3.5V8.5z"
@@ -562,13 +673,13 @@ function ProgressTrackingPage() {
           ))}
         </div>
 
-        <section className="progress-weight-card" aria-label="Weight trend">
+        <section className="progress-weight-card" aria-label="Analytics trend">
           <div className="progress-weight-head">
             <div>
-              <p className="progress-weight-kicker">CURRENT WEIGHT</p>
-              <p className="progress-weight-value">77.2kg</p>
+              <p className="progress-weight-kicker">{selectedAnalytics.title}</p>
+              <p className="progress-weight-value">{selectedAnalytics.value}</p>
             </div>
-            <span className="progress-weight-trend">−1.3 kg</span>
+            <span className="progress-weight-trend">{selectedAnalytics.trend}</span>
           </div>
           <div className="progress-chart">
             <svg className="progress-chart-svg" viewBox="0 0 320 110" preserveAspectRatio="none" aria-hidden="true">
@@ -579,7 +690,7 @@ function ProgressTrackingPage() {
                 </linearGradient>
               </defs>
               <path
-                d="M 10 28 L 70 38 L 130 48 L 190 62 L 250 78 L 310 88 L 310 110 L 10 110 Z"
+                d={chartGeometry.areaPath}
                 fill="url(#progressLineGrad)"
               />
               <polyline
@@ -588,22 +699,15 @@ function ProgressTrackingPage() {
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                points="10,28 70,38 130,48 190,62 250,78 310,88"
+                points={chartGeometry.linePoints}
               />
-              {[
-                [10, 28],
-                [70, 38],
-                [130, 48],
-                [190, 62],
-                [250, 78],
-                [310, 88],
-              ].map(([cx, cy], i) => (
-                <circle key={i} cx={cx} cy={cy} r="4" fill="#1e1e1e" stroke="#ff6f50" strokeWidth="2" />
+              {chartGeometry.points.map(({ x, y }, i) => (
+                <circle key={i} cx={x} cy={y} r="4" fill="#1e1e1e" stroke="#ff6f50" strokeWidth="2" />
               ))}
             </svg>
           </div>
           <div className="progress-chart-labels">
-            {CHART_DAYS.map((d) => (
+            {chartGeometry.labels.map((d) => (
               <span key={d}>{d}</span>
             ))}
           </div>
@@ -689,15 +793,23 @@ function ProgressTrackingPage() {
         <section className="progress-photos" aria-label="Progress photos">
           <div className="progress-photos-head">
             <h3 className="progress-photos-title">Progress Photos</h3>
-            <button type="button" className="progress-photos-add">
+            <button type="button" className="progress-photos-add" onClick={triggerPhotoPicker}>
               + Add
             </button>
           </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={handlePhotoUpload}
+          />
           <div className="progress-photos-row">
-            {PHOTO_URLS.map((src, i) => (
+            {[...uploadedPhotos, ...PHOTO_URLS].map((src, i) => (
               <img key={i} className="progress-photo-thumb" src={src} alt="" />
             ))}
-            <button type="button" className="progress-photo-placeholder">
+            <button type="button" className="progress-photo-placeholder" onClick={triggerPhotoPicker}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   d="M4 7h4l2-3h4l2 3h4v13H4V7Z"

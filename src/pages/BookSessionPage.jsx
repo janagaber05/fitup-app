@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import "./BookSessionPage.css";
 
@@ -27,6 +27,9 @@ const DATES = [
   { id: "wed18", day: "WED", num: "18" },
 ];
 
+const PRIVATE_COACH_SLOTS = ["08:00 AM", "10:00 AM", "01:00 PM", "04:00 PM", "07:00 PM"];
+const WELLNESS_SERVICE_SLOTS = ["09:00 AM", "11:00 AM", "02:00 PM", "05:00 PM", "08:00 PM"];
+
 const SESSIONS = [
   {
     id: "1",
@@ -45,7 +48,7 @@ const SESSIONS = [
     category: "hit",
     name: "HIIT Blast",
     time: "08:30 AM",
-    instructor: "Marcus Cole",
+    instructor: "Nora Blake",
     duration: "45 min",
     room: "Studio B",
     spots: 3,
@@ -57,7 +60,7 @@ const SESSIONS = [
     category: "strength",
     name: "Power Lifting Lab",
     time: "10:00 AM",
-    instructor: "Jordan Lee",
+    instructor: "Layla Hassan",
     duration: "75 min",
     room: "Floor 2",
     spots: 8,
@@ -69,7 +72,7 @@ const SESSIONS = [
     category: "cardio",
     name: "Spin & Core",
     time: "12:15 PM",
-    instructor: "Sam Rivera",
+    instructor: "Ava Rivera",
     duration: "50 min",
     room: "Cycle Room",
     spots: 2,
@@ -116,12 +119,12 @@ const PRIVATE_SERVICES = [
 const COACHES = [
   {
     id: "c1",
-    name: "Mike Tyson",
+    name: "Nina Carter",
     specialty: "Strength & Conditioning",
     rating: 4.9,
     price: 80,
     image:
-      "https://images.unsplash.com/photo-1567016432779-094069958ea5?auto=format&fit=crop&w=200&q=80",
+      "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=200&q=80",
   },
   {
     id: "c2",
@@ -134,21 +137,21 @@ const COACHES = [
   },
   {
     id: "c3",
-    name: "Marcus Cole",
+    name: "Nora Blake",
     specialty: "HIIT & MetCon",
     rating: 5.0,
     price: 75,
     image:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80",
+      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&q=80",
   },
   {
     id: "c4",
-    name: "Jordan Lee",
+    name: "Layla Hassan",
     specialty: "Olympic Lifting",
     rating: 4.7,
     price: 90,
     image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
   },
 ];
 
@@ -216,9 +219,15 @@ function CoachStars() {
 }
 
 function BookSessionPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mainTab, setMainTab] = useState("private");
   const [dateId, setDateId] = useState("thu12");
   const [category, setCategory] = useState("all");
+  const [bookingDetails, setBookingDetails] = useState(null);
+  const [bookingConfirmation, setBookingConfirmation] = useState(null);
+  const [selectedBookingSlot, setSelectedBookingSlot] = useState("");
+  const [bookingNotice, setBookingNotice] = useState("");
 
   const filtered = useMemo(() => {
     if (mainTab !== "classes") return [];
@@ -227,6 +236,125 @@ function BookSessionPage() {
   }, [mainTab, category]);
 
   const showDates = mainTab === "classes" || mainTab === "wellness" || mainTab === "private";
+
+  useEffect(() => {
+    if (!location.state?.bookingPaymentNotice) return;
+    setBookingNotice(location.state.bookingPaymentNotice);
+    navigate("/book", { replace: true });
+  }, [location.state, navigate]);
+
+  useEffect(() => {
+    if (!bookingDetails && !bookingConfirmation) return undefined;
+    const prev = document.body.style.overflow;
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (bookingConfirmation) {
+        setBookingConfirmation(null);
+        return;
+      }
+      setBookingDetails(null);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [bookingDetails, bookingConfirmation]);
+
+  const openClassDetails = (s) => {
+    setBookingDetails({
+      kind: "Class",
+      title: s.name,
+      subtitle: `Coach ${s.instructor}`,
+      priceLabel: "Included in membership",
+      when: s.time,
+      duration: s.duration,
+      location: s.room,
+      availability: `${s.spots} spots left`,
+      description: "Guided class session with warm-up, focused training blocks, and cooldown.",
+      image: s.image,
+      availableSlots: [],
+    });
+    setSelectedBookingSlot(s.time);
+  };
+
+  const openCoachDetails = (c) => {
+    setBookingDetails({
+      kind: "Personal Training",
+      title: c.name,
+      subtitle: c.specialty,
+      priceLabel: `$${c.price}/session`,
+      when: "Pick your preferred slot",
+      duration: "60 min",
+      location: "Private Training Zone",
+      availability: "Limited slots this week",
+      description: "1:1 coaching plan tailored to your goals, level, and recovery needs.",
+      image: c.image,
+      availableSlots: PRIVATE_COACH_SLOTS,
+    });
+    setSelectedBookingSlot(PRIVATE_COACH_SLOTS[0]);
+  };
+
+  const openServiceDetails = (svc) => {
+    setBookingDetails({
+      kind: "Private Service",
+      title: svc.title,
+      subtitle: "Premium wellness service",
+      priceLabel: svc.priceLabel,
+      when: "Available daily",
+      duration: svc.id === "p1" ? "20 min" : "45 min",
+      location: "Recovery & Wellness Area",
+      availability: "Advance booking recommended",
+      description: svc.description,
+      image: null,
+      availableSlots: WELLNESS_SERVICE_SLOTS,
+    });
+    setSelectedBookingSlot(WELLNESS_SERVICE_SLOTS[0]);
+  };
+
+  const confirmBooking = () => {
+    if (!bookingDetails) return;
+    const selectedDate = DATES.find((d) => d.id === dateId);
+    const dateLabel = selectedDate ? `${selectedDate.day} ${selectedDate.num}` : "Selected day";
+    const bookingRef = `BK-${Date.now().toString().slice(-6)}`;
+    const chosenTime = selectedBookingSlot || bookingDetails.when;
+    const isPaidBooking =
+      bookingDetails.priceLabel.startsWith("$") &&
+      bookingDetails.priceLabel !== "$Free" &&
+      bookingDetails.priceLabel !== "Included in membership";
+
+    if (isPaidBooking) {
+      navigate("/membership/payment", {
+        state: {
+          paymentMode: "booking",
+          booking: {
+            bookingRef,
+            title: bookingDetails.title,
+            subtitle: bookingDetails.subtitle,
+            priceLabel: bookingDetails.priceLabel,
+            dateLabel,
+            timeLabel: chosenTime,
+            location: bookingDetails.location,
+            kind: bookingDetails.kind,
+          },
+        },
+      });
+      setBookingDetails(null);
+      return;
+    }
+
+    setBookingConfirmation({
+      ...bookingDetails,
+      dateLabel,
+      bookingRef,
+      confirmedAt: new Date().toLocaleString(),
+      status: "Confirmed",
+      when: chosenTime,
+    });
+    setBookingNotice(`${bookingDetails.title} booked successfully.`);
+    setBookingDetails(null);
+  };
 
   return (
     <main className="book-page">
@@ -358,7 +486,7 @@ function BookSessionPage() {
                             {s.room}
                           </span>
                         </div>
-                        <button type="button" className="book-btn-small">
+                        <button type="button" className="book-btn-small" onClick={() => openClassDetails(s)}>
                           Book
                         </button>
                       </div>
@@ -370,7 +498,7 @@ function BookSessionPage() {
           </>
         )}
 
-        {mainTab === "wellness" && (
+        {mainTab === "private" && (
           <section className="book-coaches-section" aria-labelledby="coaches-heading">
             <h2 id="coaches-heading" className="book-coaches-heading">
               Available Coaches
@@ -378,7 +506,7 @@ function BookSessionPage() {
             <ul className="book-coach-list">
               {COACHES.map((c) => (
                 <li key={c.id}>
-                  <button type="button" className="book-coach-card">
+                  <button type="button" className="book-coach-card" onClick={() => openCoachDetails(c)}>
                     <img className="coach-avatar" src={c.image} alt="" loading="lazy" />
                     <div className="coach-middle">
                       <span className="coach-name">{c.name}</span>
@@ -399,28 +527,28 @@ function BookSessionPage() {
           </section>
         )}
 
-        {mainTab === "private" && (
+        {mainTab === "wellness" && (
           <ul className="private-service-list">
             {PRIVATE_SERVICES.map((svc) => (
               <li key={svc.id}>
                 {svc.id === "p1" ? (
-                  <Link to="/ems-training" className="private-service-card-link">
-                    <article className="private-service-card">
-                      <div className="private-service-top">
-                        <span className="private-service-icon-wrap">
-                          <PrivateServiceIcon type={svc.icon} />
-                        </span>
-                        <div className="private-service-copy">
-                          <div className="private-service-title-row">
-                            <h2 className="private-service-title">{svc.title}</h2>
-                            <span className="private-service-price">{svc.priceLabel}</span>
-                          </div>
-                          <p className="private-service-desc">{svc.description}</p>
+                  <article className="private-service-card">
+                    <div className="private-service-top">
+                      <span className="private-service-icon-wrap">
+                        <PrivateServiceIcon type={svc.icon} />
+                      </span>
+                      <div className="private-service-copy">
+                        <div className="private-service-title-row">
+                          <h2 className="private-service-title">{svc.title}</h2>
+                          <span className="private-service-price">{svc.priceLabel}</span>
                         </div>
+                        <p className="private-service-desc">{svc.description}</p>
                       </div>
-                      <span className="private-service-cta">Book Now</span>
-                    </article>
-                  </Link>
+                    </div>
+                    <button type="button" className="private-service-cta" onClick={() => openServiceDetails(svc)}>
+                      Book Now
+                    </button>
+                  </article>
                 ) : (
                   <article className="private-service-card">
                     <div className="private-service-top">
@@ -435,7 +563,7 @@ function BookSessionPage() {
                         <p className="private-service-desc">{svc.description}</p>
                       </div>
                     </div>
-                    <button type="button" className="private-service-cta">
+                    <button type="button" className="private-service-cta" onClick={() => openServiceDetails(svc)}>
                       Book Now
                     </button>
                   </article>
@@ -444,7 +572,93 @@ function BookSessionPage() {
             ))}
           </ul>
         )}
+        {bookingNotice ? <p className="book-notice">{bookingNotice}</p> : null}
       </div>
+      {bookingDetails ? (
+        <div className="book-detail-wrap" role="presentation">
+          <button type="button" className="book-detail-backdrop" aria-label="Close details" onClick={() => setBookingDetails(null)} />
+          <div className="book-detail-modal" role="dialog" aria-modal="true" aria-label="Booking details">
+            <header className="book-detail-head">
+              <h2>{bookingDetails.title}</h2>
+              <button type="button" className="book-detail-close" onClick={() => setBookingDetails(null)} aria-label="Close">
+                ✕
+              </button>
+            </header>
+            <p className="book-detail-sub">
+              {bookingDetails.kind} · {bookingDetails.subtitle}
+            </p>
+            {bookingDetails.image ? <img src={bookingDetails.image} alt="" className="book-detail-img" /> : null}
+            <div className="book-detail-list">
+              <div><span>Price</span><strong>{bookingDetails.priceLabel}</strong></div>
+              <div><span>When</span><strong>{bookingDetails.when}</strong></div>
+              <div><span>Duration</span><strong>{bookingDetails.duration}</strong></div>
+              <div><span>Location</span><strong>{bookingDetails.location}</strong></div>
+              <div><span>Availability</span><strong>{bookingDetails.availability}</strong></div>
+            </div>
+            {bookingDetails.availableSlots?.length ? (
+              <div className="book-slot-block">
+                <p className="book-slot-title">Choose time slot</p>
+                <div className="book-slot-grid">
+                  {bookingDetails.availableSlots.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      className={`book-slot-chip${selectedBookingSlot === slot ? " book-slot-chip-active" : ""}`}
+                      onClick={() => setSelectedBookingSlot(slot)}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <p className="book-detail-desc">{bookingDetails.description}</p>
+            <div className="book-detail-actions">
+              <button type="button" className="book-detail-cancel" onClick={() => setBookingDetails(null)}>
+                Cancel
+              </button>
+              <button type="button" className="book-detail-confirm" onClick={confirmBooking}>
+                Confirm Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {bookingConfirmation ? (
+        <div className="book-confirm-wrap" role="presentation">
+          <button
+            type="button"
+            className="book-confirm-backdrop"
+            aria-label="Close booking confirmation"
+            onClick={() => setBookingConfirmation(null)}
+          />
+          <div className="book-confirm-modal" role="dialog" aria-modal="true" aria-label="Booking confirmation details">
+            <header className="book-confirm-head">
+              <h2>Booking Confirmation</h2>
+              <button type="button" className="book-confirm-close" onClick={() => setBookingConfirmation(null)} aria-label="Close">
+                ✕
+              </button>
+            </header>
+            <p className="book-confirm-ok">Your booking is confirmed.</p>
+            <div className="book-confirm-list">
+              <div><span>Booking ID</span><strong>{bookingConfirmation.bookingRef}</strong></div>
+              <div><span>Status</span><strong>{bookingConfirmation.status}</strong></div>
+              <div><span>Type</span><strong>{bookingConfirmation.kind}</strong></div>
+              <div><span>Title</span><strong>{bookingConfirmation.title}</strong></div>
+              <div><span>With</span><strong>{bookingConfirmation.subtitle}</strong></div>
+              <div><span>Date</span><strong>{bookingConfirmation.dateLabel}</strong></div>
+              <div><span>Time</span><strong>{bookingConfirmation.when}</strong></div>
+              <div><span>Duration</span><strong>{bookingConfirmation.duration}</strong></div>
+              <div><span>Location</span><strong>{bookingConfirmation.location}</strong></div>
+              <div><span>Amount</span><strong>{bookingConfirmation.priceLabel}</strong></div>
+              <div><span>Confirmed At</span><strong>{bookingConfirmation.confirmedAt}</strong></div>
+            </div>
+            <button type="button" className="book-confirm-done" onClick={() => setBookingConfirmation(null)}>
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
       <BottomNav activeTab="book" />
     </main>
   );

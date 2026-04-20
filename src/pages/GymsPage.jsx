@@ -12,12 +12,12 @@ function GymsPage() {
               <div className="avatar-ring">
                 <img
                   className="avatar"
-                  src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80"
-                  alt="Alex Morgan"
+                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80"
+                  alt="Lina Morgan"
                 />
               </div>
               <div>
-                <h1 className="profile-name">Alex Morgan</h1>
+                <h1 className="profile-name">Lina Morgan</h1>
                 <p className="profile-subtitle">GOOD MORNING</p>
               </div>
             </div>
@@ -75,7 +75,9 @@ function GymsPage() {
 
         <section className="section-head">
           <h3>Live Capacity</h3>
-          <button type="button">View Branch</button>
+          <Link to="/branch-details" className="section-head-link">
+            View Branch
+          </Link>
         </section>
 
         <section className="capacity-card">

@@ -46,7 +46,7 @@ const PACKAGE_FEATURES = [
 const UPCOMING = [
   { id: "1", title: "Full Body", when: "Mar 15, 2026 • 10:00 AM", coach: "Sarah Johnson" },
   { id: "2", title: "Full Body", when: "Mar 17, 2026 • 6:00 PM", coach: "Sarah Johnson" },
-  { id: "3", title: "Full Body", when: "Mar 20, 2026 • 9:30 AM", coach: "Marcus Cole" },
+  { id: "3", title: "Full Body", when: "Mar 20, 2026 • 9:30 AM", coach: "Nora Blake" },
 ];
 
 function WhyIcon({ type }) {

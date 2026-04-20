@@ -4,6 +4,11 @@ import "./AuthPage.css";
 
 const USERS_KEY = "fitup-auth-users";
 const SESSION_KEY = "fitup-auth-session";
+const DEMO_USER = {
+  email: "demo@fitup.app",
+  memberId: "DEMO123",
+  password: "demo1234",
+};
 
 function readUsers() {
   try {
@@ -18,6 +23,15 @@ function readUsers() {
 
 function saveUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+function ensureDemoUser() {
+  const users = readUsers();
+  const hasDemo = users.some(
+    (u) => u.email === DEMO_USER.email && u.memberId === DEMO_USER.memberId,
+  );
+  if (hasDemo) return;
+  saveUsers([...users, DEMO_USER]);
 }
 
 function AuthPage() {
@@ -37,6 +51,15 @@ function AuthPage() {
     () => (mode === "login" ? "Login to FitUp" : "Create your account"),
     [mode],
   );
+
+  const useDemoAccount = () => {
+    ensureDemoUser();
+    setMode("login");
+    setLoginEmail(DEMO_USER.email);
+    setLoginMemberId(DEMO_USER.memberId);
+    setLoginPassword(DEMO_USER.password);
+    setMessage("Demo account filled. Tap Login.");
+  };
 
   const handleRegister = (e) => {
     e.preventDefault();
@@ -100,6 +123,9 @@ function AuthPage() {
         <p className="auth-kicker">Welcome to FitUp</p>
         <h1 className="auth-title">{title}</h1>
         <p className="auth-subtitle">Use your email + member ID. Set your own password.</p>
+        <button type="button" className="auth-demo" onClick={useDemoAccount}>
+          Use Demo Account
+        </button>
 
         <div className="auth-mode-tabs" role="tablist" aria-label="Authentication mode">
           <button
@@ -234,6 +260,9 @@ function AuthPage() {
         )}
 
         {message ? <p className="auth-message">{message}</p> : null}
+        <p className="auth-demo-hint">
+          Demo: {DEMO_USER.email} / {DEMO_USER.memberId} / {DEMO_USER.password}
+        </p>
       </section>
     </main>
   );

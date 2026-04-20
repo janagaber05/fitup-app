@@ -10,8 +10,10 @@ import OnboardingArFitnessPage from "./pages/OnboardingArFitnessPage";
 import AuthPage from "./pages/AuthPage";
 import GymsPage from "./pages/GymsPage";
 import MembershipPage from "./pages/MembershipPage";
+import PaymentPage from "./pages/PaymentPage";
 import ProfilePage from "./pages/ProfilePage";
 import MyGymPage from "./pages/MyGymPage";
+import BranchDetailsPage from "./pages/BranchDetailsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import ProgressTrackingPage from "./pages/ProgressTrackingPage";
@@ -53,7 +55,9 @@ function App() {
           <Route path="/gyms" element={<PrivateRoute><GymsPage /></PrivateRoute>} />
           <Route path="/progress" element={<PrivateRoute><ProgressTrackingPage /></PrivateRoute>} />
           <Route path="/my-gym" element={<PrivateRoute><MyGymPage /></PrivateRoute>} />
+          <Route path="/branch-details" element={<PrivateRoute><BranchDetailsPage /></PrivateRoute>} />
           <Route path="/membership" element={<PrivateRoute><MembershipPage /></PrivateRoute>} />
+          <Route path="/membership/payment" element={<PrivateRoute><PaymentPage /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
           <Route
             path="/announcements"

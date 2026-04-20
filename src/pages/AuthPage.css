@@ -40,6 +40,23 @@
   font-size: 13px;
 }
 
+.auth-demo {
+  margin-top: 12px;
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 111, 80, 0.45);
+  background: rgba(255, 111, 80, 0.12);
+  color: #ffb39f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-demo:active {
+  opacity: 0.9;
+}
+
 .auth-mode-tabs {
   margin-top: 16px;
   display: grid;
@@ -115,5 +132,12 @@
   margin: 12px 2px 2px;
   color: #ffb4a3;
   font-size: 12px;
+  line-height: 1.4;
+}
+
+.auth-demo-hint {
+  margin: 8px 2px 2px;
+  color: #8f949c;
+  font-size: 11px;
   line-height: 1.4;
 }
