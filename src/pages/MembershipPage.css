@@ -122,6 +122,172 @@
   font-size: 11px;
 }
 
+.membership-ems-card {
+  margin-top: 12px;
+  border-radius: 16px;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px;
+}
+
+.membership-ems-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.membership-ems-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.membership-ems-pill {
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: rgba(28, 217, 124, 0.16);
+  color: #1cd97c;
+  border: 1px solid rgba(28, 217, 124, 0.34);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.membership-ems-active {
+  margin-top: 10px;
+  border-radius: 12px;
+  background: #252525;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px;
+}
+
+.membership-ems-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.membership-ems-meta {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #aeb3bb;
+}
+
+.membership-ems-track {
+  margin: 7px 0 0;
+  font-size: 11px;
+  color: #ffb39f;
+  font-weight: 700;
+}
+
+.membership-ems-book-row {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+}
+
+.membership-ems-select {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1f1f1f;
+  color: #ffffff;
+  font: inherit;
+  font-size: 11px;
+  padding: 0 8px;
+}
+
+.membership-ems-book-btn {
+  border: 0;
+  border-radius: 999px;
+  min-height: 36px;
+  padding: 0 12px;
+  background: #ff6f50;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.membership-ems-empty {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #aeb3bb;
+}
+
+.membership-ems-options {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.membership-ems-option {
+  border-radius: 12px;
+  background: #252525;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.membership-ems-option-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.membership-ems-option-meta {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: #aeb3bb;
+}
+
+.membership-ems-option-btn {
+  border: 0;
+  border-radius: 999px;
+  min-height: 36px;
+  padding: 0 14px;
+  background: #ff6f50;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.membership-ems-bookings {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.membership-ems-booking-item {
+  border-radius: 10px;
+  background: #252525;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #c7ccd5;
+}
+
+.membership-ems-booking-item strong {
+  color: #ffffff;
+  font-size: 11px;
+}
+
 .title-row h2 {
   margin: 16px 2px 10px;
   font-size: 17px;

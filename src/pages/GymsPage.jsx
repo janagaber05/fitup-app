@@ -1,8 +1,128 @@
 import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
 import BottomNav from "../components/BottomNav";
 import "./GymsPage.css";
 
 function GymsPage() {
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerStatus, setScannerStatus] = useState("idle");
+  const [scannerMessage, setScannerMessage] = useState("");
+  const [scannedCode, setScannedCode] = useState("");
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const rafRef = useRef(0);
+
+  useEffect(() => {
+    if (!scannerOpen) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [scannerOpen]);
+
+  useEffect(() => {
+    if (!scannerOpen) return undefined;
+    let cancelled = false;
+
+    const stopScanner = () => {
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+
+    const scanFrame = () => {
+      if (cancelled) return;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas || video.readyState < 2) {
+        rafRef.current = window.requestAnimationFrame(scanFrame);
+        return;
+      }
+
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      if (!width || !height) {
+        rafRef.current = window.requestAnimationFrame(scanFrame);
+        return;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) {
+        rafRef.current = window.requestAnimationFrame(scanFrame);
+        return;
+      }
+      ctx.drawImage(video, 0, 0, width, height);
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const result = jsQR(imageData.data, width, height, {
+        inversionAttempts: "dontInvert",
+      });
+
+      if (result?.data) {
+        setScannedCode(result.data);
+        setScannerStatus("success");
+        setScannerMessage("QR detected and verified. You are checked in.");
+        stopScanner();
+        return;
+      }
+
+      rafRef.current = window.requestAnimationFrame(scanFrame);
+    };
+
+    const startScanner = async () => {
+      setScannerMessage("");
+      setScannedCode("");
+      setScannerStatus("scanning");
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        rafRef.current = window.requestAnimationFrame(scanFrame);
+      } catch {
+        setScannerStatus("error");
+        setScannerMessage("Camera access failed. Please allow camera permission and try again.");
+      }
+    };
+
+    startScanner();
+
+    return () => {
+      cancelled = true;
+      stopScanner();
+    };
+  }, [scannerOpen]);
+
+  const openArScanner = () => {
+    setScannerStatus("idle");
+    setScannerMessage("");
+    setScannedCode("");
+    setScannerOpen(true);
+  };
+
+  const closeArScanner = () => {
+    setScannerOpen(false);
+    setScannerStatus("idle");
+  };
+
   return (
     <main className="dashboard-page">
       <section className="dashboard-content">
@@ -130,7 +250,7 @@ function GymsPage() {
             </span>
             <span className="tile-label">Book</span>
           </Link>
-          <button type="button" className="quick-tile">
+          <button type="button" className="quick-tile" onClick={openArScanner}>
             <span className="tile-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" className="tile-svg">
                 <path
@@ -269,6 +389,55 @@ function GymsPage() {
           />
         </svg>
       </button>
+
+      {scannerOpen ? (
+        <div className="ar-scan-wrap" role="presentation">
+          <button type="button" className="ar-scan-backdrop" aria-label="Close scanner" onClick={closeArScanner} />
+          <section className="ar-scan-modal" role="dialog" aria-modal="true" aria-label="AR check in scanner">
+            <header className="ar-scan-head">
+              <h2>AR Check In</h2>
+              <button type="button" className="ar-scan-close" onClick={closeArScanner} aria-label="Close">
+                ✕
+              </button>
+            </header>
+            <p className="ar-scan-sub">
+              {scannerStatus === "success"
+                ? "Scan complete. You are checked in."
+                : scannerStatus === "error"
+                  ? scannerMessage
+                  : "Align your membership QR in the frame to check in."}
+            </p>
+            <div className="ar-scan-viewfinder" aria-hidden="true">
+              <video ref={videoRef} className="ar-scan-video" playsInline muted />
+              <canvas ref={canvasRef} className="ar-scan-canvas" />
+              <div className="ar-scan-corners">
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+              <div className={`ar-scan-line${scannerStatus === "scanning" ? " ar-scan-line--run" : ""}`} />
+              {scannerStatus === "success" ? (
+                <div className="ar-scan-success">
+                  Checked In
+                  {scannedCode ? <small>{scannedCode}</small> : null}
+                </div>
+              ) : null}
+            </div>
+            <div className="ar-scan-actions">
+              {scannerStatus === "success" || scannerStatus === "error" ? (
+                <button type="button" className="ar-scan-done" onClick={closeArScanner}>
+                  Done
+                </button>
+              ) : (
+                <button type="button" className="ar-scan-cancel" onClick={closeArScanner}>
+                  Cancel
+                </button>
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <BottomNav activeTab="home" />
     </main>

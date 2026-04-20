@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -39,12 +40,49 @@ function PrivateRoute({ children }) {
   return getSession() ? children : <Navigate to="/auth" replace />;
 }
 
+function IntroEntrance() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setReady(true);
+    }, 2000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  if (ready) return <Navigate to="/onboarding" replace />;
+
+  return (
+    <main className="app-intro-screen" role="status" aria-live="polite" aria-label="Loading FitUp">
+      <div className="app-preloader-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="app-preloader-bolt">
+          <path
+            d="M13 2L5 14h6l-1 8 9-12h-6l1-8z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+      <div className="app-preloader-track-wrap" aria-hidden="true">
+        <span className="app-preloader-track" />
+      </div>
+      <p className="app-preloader-title">FitUp</p>
+      <p className="app-preloader-sub">Preparing your training experience</p>
+    </main>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
       <div className="app-phone-shell">
         <Routes>
-          <Route path="/" element={<Navigate to="/onboarding" replace />} />
+          <Route path="/" element={<Navigate to="/intro" replace />} />
+          <Route path="/intro" element={<IntroEntrance />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/onboarding-experts" element={<OnboardingExpertsPage />} />
           <Route

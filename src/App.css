@@ -11,6 +11,136 @@
   transform: translateZ(0);
 }
 
+.app-intro-screen {
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background:
+    radial-gradient(50% 34% at 50% 12%, rgba(255, 111, 80, 0.18), rgba(255, 111, 80, 0) 75%),
+    radial-gradient(60% 48% at 50% 92%, rgba(255, 111, 80, 0.12), rgba(255, 111, 80, 0) 78%),
+    #121212;
+}
+
+.app-preloader-badge {
+  width: 84px;
+  height: 84px;
+  border-radius: 26px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #ff7e64 0%, #ff6f50 100%);
+  box-shadow: 0 16px 34px rgba(255, 111, 80, 0.3);
+  animation: app-preloader-badge-float 1.5s ease-in-out infinite;
+}
+
+.app-preloader-bolt {
+  width: 36px;
+  height: 36px;
+  color: #ffffff;
+}
+
+.app-preloader-title {
+  margin: 2px 0 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.app-preloader-sub {
+  margin: 0;
+  color: #9ea3ab;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.app-preloader-track-wrap {
+  width: min(64vw, 250px);
+  height: 6px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.app-preloader-track {
+  display: block;
+  width: 45%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff9f8c 0%, #ff6f50 60%, #ff5d8d 100%);
+  animation: app-preloader-track-move 1.15s ease-in-out infinite;
+}
+
+@keyframes app-preloader-badge-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes app-preloader-track-move {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(75%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  background: #232323;
+  display: inline-grid;
+  place-items: center;
+  margin: 0;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+input[type="checkbox"]::before {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border: 2px solid transparent;
+  border-top: 0;
+  border-right: 0;
+  transform: rotate(-45deg) scale(0.8);
+  opacity: 0;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+input[type="checkbox"]:checked {
+  background: #ff5da8;
+  border-color: #ff5da8;
+  box-shadow: 0 0 0 2px rgba(255, 93, 168, 0.2);
+}
+
+input[type="checkbox"]:checked::before {
+  border-color: #ffffff;
+  opacity: 1;
+  transform: rotate(-45deg) scale(1);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(90, 163, 255, 0.4);
+}
+
 @media (min-width: 768px) {
   .app-phone-shell {
     height: min(932px, calc(100dvh - 32px));

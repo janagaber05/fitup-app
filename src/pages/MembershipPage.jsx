@@ -33,12 +33,43 @@ const MEMBERSHIP_FREEZE_RULES = {
   "Premium All-Access": 21,
   "Elite Performance": 30,
 };
+const EMS_PACKAGE_KEY = "fitup-ems-active-package";
+const EMS_BOOKINGS_KEY = "fitup-ems-package-bookings";
+const EMS_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const EMS_TIMES = ["09:00 AM", "11:00 AM", "01:00 PM", "04:00 PM", "07:00 PM"];
+const EMS_PACKAGE_OPTIONS = [
+  {
+    id: "starter",
+    name: "EMS Starter",
+    price: 199,
+    period: "/month",
+    sessionsPerMonth: 4,
+    coach: { name: "Sarah Johnson", specialty: "EMS Fundamentals" },
+  },
+  {
+    id: "pro",
+    name: "EMS Pro",
+    price: 299,
+    period: "/month",
+    sessionsPerMonth: 8,
+    coach: { name: "Nora Blake", specialty: "Strength & Fat Loss" },
+  },
+];
 
 function getRemainingFreezeDays(freezeUntil) {
   if (!freezeUntil) return 0;
   const diffMs = new Date(freezeUntil).getTime() - Date.now();
   if (diffMs <= 0) return 0;
   return Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+}
+
+function normalizeEmsPackage(pkg) {
+  if (!pkg) return null;
+  return {
+    ...pkg,
+    period: pkg.period || "/month",
+    usedSessions: Number.isFinite(pkg.usedSessions) ? pkg.usedSessions : 0,
+  };
 }
 
 function MembershipPage() {
@@ -78,6 +109,24 @@ function MembershipPage() {
       { id: "h-3", title: "Monthly Subscription - Premium All-Access", sub: "Nov 1, 2023 · Visa **** 4242 · Membership fee", amount: "$89.99" },
     ];
   });
+  const [activeEmsPackage, setActiveEmsPackage] = useState(() => {
+    try {
+      const raw = localStorage.getItem(EMS_PACKAGE_KEY);
+      return raw ? normalizeEmsPackage(JSON.parse(raw)) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [emsBookings, setEmsBookings] = useState(() => {
+    try {
+      const raw = localStorage.getItem(EMS_BOOKINGS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [emsDay, setEmsDay] = useState(EMS_DAYS[0]);
+  const [emsTime, setEmsTime] = useState(EMS_TIMES[0]);
 
   const currentPlan = PLAN_OPTIONS.find((p) => p.id === currentSubscription.planId) || PLAN_OPTIONS[1];
   const currentPrice = currentPlan.prices[currentSubscription.term];
@@ -128,6 +177,19 @@ function MembershipPage() {
   const startPaymentFlow = useCallback(
     (planId, term) => {
       navigate("/membership/payment", { state: { planId, term } });
+    },
+    [navigate],
+  );
+
+  const startEmsPaymentFlow = useCallback(
+    (pkg) => {
+      navigate("/membership/payment", {
+        state: {
+          paymentMode: "ems-package",
+          emsPackage: pkg,
+          returnTo: "/membership",
+        },
+      });
     },
     [navigate],
   );
@@ -203,6 +265,20 @@ function MembershipPage() {
   }, [paymentHistory]);
 
   useEffect(() => {
+    localStorage.setItem(EMS_BOOKINGS_KEY, JSON.stringify(emsBookings));
+  }, [emsBookings]);
+
+  useEffect(() => {
+    if (location.state?.emsPaymentNotice) {
+      setNotice(location.state.emsPaymentNotice);
+      if (location.state.emsPackageActivated) {
+        const nextPackage = normalizeEmsPackage(location.state.emsPackageActivated);
+        setActiveEmsPackage(nextPackage);
+        localStorage.setItem(EMS_PACKAGE_KEY, JSON.stringify(nextPackage));
+      }
+      navigate("/membership", { replace: true });
+      return;
+    }
     if (!location.state?.notice) return;
     setNotice(location.state.notice);
     setPlansOpen(false);
@@ -210,6 +286,29 @@ function MembershipPage() {
     if (location.state.paymentEntry) setPaymentHistory((prev) => [location.state.paymentEntry, ...prev]);
     navigate("/membership", { replace: true });
   }, [location.state, navigate]);
+
+  const bookEmsSession = useCallback(() => {
+    if (!activeEmsPackage) {
+      setNotice("Please activate an EMS package first.");
+      return;
+    }
+    if (activeEmsPackage.usedSessions >= activeEmsPackage.sessionsPerMonth) {
+      setNotice("All EMS package sessions are used. Renew or upgrade to book more.");
+      return;
+    }
+
+    const booking = {
+      id: `ems-booking-${Date.now()}`,
+      title: "EMS Package Session",
+      when: `${emsDay} • ${emsTime}`,
+      coach: activeEmsPackage.coach?.name || "Assigned Coach",
+    };
+    const nextPackage = { ...activeEmsPackage, usedSessions: activeEmsPackage.usedSessions + 1 };
+    setEmsBookings((prev) => [booking, ...prev]);
+    setActiveEmsPackage(nextPackage);
+    localStorage.setItem(EMS_PACKAGE_KEY, JSON.stringify(nextPackage));
+    setNotice(`EMS session booked for ${emsDay} at ${emsTime}.`);
+  }, [activeEmsPackage, emsDay, emsTime]);
 
   return (
     <main className="membership-page">
@@ -289,6 +388,72 @@ function MembershipPage() {
         <p className="membership-freeze-meta">
           Freeze allowance: {maxFreezeDays} days/year · Remaining: {remainingFreezeDays} days
         </p>
+
+        <section className="membership-ems-card" aria-labelledby="membership-ems-heading">
+          <div className="membership-ems-head">
+            <h2 id="membership-ems-heading">EMS Package</h2>
+            {activeEmsPackage ? <span className="membership-ems-pill">Active</span> : null}
+          </div>
+          {activeEmsPackage ? (
+            <div className="membership-ems-active">
+              <p className="membership-ems-title">{activeEmsPackage.name}</p>
+              <p className="membership-ems-meta">
+                ${activeEmsPackage.price}
+                {activeEmsPackage.period || "/month"} · {activeEmsPackage.sessionsPerMonth} sessions · Coach {activeEmsPackage.coach?.name}
+              </p>
+              <p className="membership-ems-track">
+                Sessions used: {activeEmsPackage.usedSessions}/{activeEmsPackage.sessionsPerMonth}
+              </p>
+              <div className="membership-ems-book-row">
+                <select className="membership-ems-select" value={emsDay} onChange={(e) => setEmsDay(e.target.value)}>
+                  {EMS_DAYS.map((day) => (
+                    <option key={day} value={day}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+                <select className="membership-ems-select" value={emsTime} onChange={(e) => setEmsTime(e.target.value)}>
+                  {EMS_TIMES.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className="membership-ems-book-btn" onClick={bookEmsSession}>
+                  Book Session
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="membership-ems-empty">No EMS package active yet. Buy one package to activate it in your account.</p>
+          )}
+          <div className="membership-ems-options">
+            {EMS_PACKAGE_OPTIONS.map((pkg) => (
+              <article key={pkg.id} className="membership-ems-option">
+                <div>
+                  <p className="membership-ems-option-title">{pkg.name}</p>
+                  <p className="membership-ems-option-meta">
+                    ${pkg.price}
+                    {pkg.period} · {pkg.sessionsPerMonth} sessions
+                  </p>
+                </div>
+                <button type="button" className="membership-ems-option-btn" onClick={() => startEmsPaymentFlow(pkg)}>
+                  Buy & Activate
+                </button>
+              </article>
+            ))}
+          </div>
+          {emsBookings.length > 0 ? (
+            <ul className="membership-ems-bookings">
+              {emsBookings.slice(0, 3).map((row) => (
+                <li key={row.id} className="membership-ems-booking-item">
+                  <span>{row.when}</span>
+                  <strong>{row.coach}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
 
         <section className="title-row">
           <h2>Payment History</h2>

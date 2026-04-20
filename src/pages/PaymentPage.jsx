@@ -13,10 +13,14 @@ function PaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const bookingPayment = location.state?.paymentMode === "booking" ? location.state.booking : null;
+  const emsPackagePayment = location.state?.paymentMode === "ems-package" ? location.state.emsPackage : null;
+  const privatePackagePayment = location.state?.paymentMode === "profile-private" ? location.state.privatePackage : null;
+  const returnTo = typeof location.state?.returnTo === "string" ? location.state.returnTo : "";
   const chosen = location.state || { planId: "premium", term: "monthly" };
   const selectedPlan = PLAN_OPTIONS.find((p) => p.id === chosen.planId) || PLAN_OPTIONS[1];
   const selectedTerm = BILLING_LABELS[chosen.term] ? chosen.term : "monthly";
   const price = selectedPlan.prices[selectedTerm];
+  const emsPrice = Number(emsPackagePayment?.price || 0);
 
   const [method, setMethod] = useState("card");
   const [selectedSavedCard, setSelectedSavedCard] = useState("axis");
@@ -59,8 +63,12 @@ function PaymentPage() {
     () =>
       bookingPayment
         ? `${bookingPayment.title} · ${bookingPayment.kind} · ${bookingPayment.priceLabel}`
+        : privatePackagePayment
+          ? `${privatePackagePayment.title} · Private Sessions · $${Number(privatePackagePayment.amount || 0).toFixed(2)}`
+        : emsPackagePayment
+          ? `${emsPackagePayment.name} · ${emsPackagePayment.sessionsPerMonth} Sessions · $${emsPrice.toFixed(2)}`
         : `${selectedPlan.name} · ${BILLING_LABELS[selectedTerm]} · $${price.toFixed(2)}`,
-    [bookingPayment, selectedPlan.name, selectedTerm, price],
+    [bookingPayment, privatePackagePayment, emsPackagePayment, emsPrice, selectedPlan.name, selectedTerm, price],
   );
 
   const submit = (e) => {
@@ -80,10 +88,30 @@ function PaymentPage() {
     window.setTimeout(() => {
       const now = new Date();
       if (bookingPayment) {
-        navigate("/book", {
+        navigate(returnTo || "/book", {
           replace: true,
           state: {
             bookingPaymentNotice: `Payment successful. ${bookingPayment.title} is booked (${bookingPayment.bookingRef}).`,
+          },
+        });
+        return;
+      }
+      if (privatePackagePayment) {
+        navigate(returnTo || "/profile", {
+          replace: true,
+          state: {
+            privatePaymentNotice: `Payment successful. ${privatePackagePayment.title} added to your private sessions.`,
+            privateCreditsAdded: Number(privatePackagePayment.sessions || 0),
+          },
+        });
+        return;
+      }
+      if (emsPackagePayment) {
+        navigate(returnTo || "/ems-training", {
+          replace: true,
+          state: {
+            emsPaymentNotice: `Payment successful. ${emsPackagePayment.name} is now active in your account.`,
+            emsPackageActivated: emsPackagePayment,
           },
         });
         return;
@@ -109,7 +137,20 @@ function PaymentPage() {
   return (
     <main className="payment-page">
       <header className="payment-header">
-        <Link to={bookingPayment ? "/book" : "/membership"} className="payment-back">←</Link>
+        <Link
+          to={
+            bookingPayment
+              ? (returnTo || "/book")
+              : privatePackagePayment
+                ? (returnTo || "/profile")
+                : emsPackagePayment
+                  ? (returnTo || "/ems-training")
+                  : "/membership"
+          }
+          className="payment-back"
+        >
+          ←
+        </Link>
         <h1>Payment Methods</h1>
         <span className="payment-header-spacer" />
       </header>
