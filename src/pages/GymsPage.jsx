@@ -264,7 +264,7 @@ function GymsPage() {
             </span>
             <span className="tile-label">Check In</span>
           </button>
-          <button type="button" className="quick-tile">
+          <Link to="/ar-tutorial" className="quick-tile">
             <span className="tile-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" className="tile-svg">
                 <path
@@ -283,7 +283,7 @@ function GymsPage() {
               </svg>
             </span>
             <span className="tile-label">AR</span>
-          </button>
+          </Link>
           <Link to="/progress" className="quick-tile">
             <span className="tile-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" className="tile-svg">

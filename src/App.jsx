@@ -20,6 +20,7 @@ import AnnouncementsPage from "./pages/AnnouncementsPage";
 import ProgressTrackingPage from "./pages/ProgressTrackingPage";
 import BookSessionPage from "./pages/BookSessionPage";
 import EmsTrainingPage from "./pages/EmsTrainingPage";
+import EquipmentAR from "./components/EquipmentAR";
 import "./App.css";
 
 const SESSION_KEY = "fitup-auth-session";
@@ -105,6 +106,7 @@ function App() {
           <Route path="/updates" element={<PrivateRoute><AnnouncementsPage /></PrivateRoute>} />
           <Route path="/book" element={<PrivateRoute><BookSessionPage /></PrivateRoute>} />
           <Route path="/ems-training" element={<PrivateRoute><EmsTrainingPage /></PrivateRoute>} />
+          <Route path="/ar-tutorial" element={<PrivateRoute><EquipmentAR /></PrivateRoute>} />
         </Routes>
       </div>
     </BrowserRouter>
