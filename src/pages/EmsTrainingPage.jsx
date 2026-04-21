@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import "./EmsTrainingPage.css";
@@ -173,21 +173,24 @@ function EmsTrainingPage() {
 
   const mergedUpcoming = packageBookings.length > 0 ? packageBookings : UPCOMING;
 
-  const activatePackage = (pkg) => {
-    const target = pkg || selectedPkg;
-    if (!target) return;
-    setActivePackage({
-      id: target.id,
-      name: target.name,
-      sessionsPerMonth: target.sessionsPerMonth,
-      usedSessions: 0,
-      coach: target.coach,
-      price: target.price,
-      startedAt: new Date().toISOString(),
-    });
-    setSelectedPkg(null);
-    setNotice(`${target.name} activated. Coach ${target.coach.name} assigned.`);
-  };
+  const activatePackage = useCallback(
+    (pkg) => {
+      const target = pkg || selectedPkg;
+      if (!target) return;
+      setActivePackage({
+        id: target.id,
+        name: target.name,
+        sessionsPerMonth: target.sessionsPerMonth,
+        usedSessions: 0,
+        coach: target.coach,
+        price: target.price,
+        startedAt: new Date().toISOString(),
+      });
+      setSelectedPkg(null);
+      setNotice(`${target.name} activated. Coach ${target.coach.name} assigned.`);
+    },
+    [selectedPkg],
+  );
 
   useEffect(() => {
     if (!location.state?.emsPaymentNotice) return;
@@ -197,7 +200,7 @@ function EmsTrainingPage() {
       setNotice(location.state.emsPaymentNotice);
     }
     navigate("/ems-training", { replace: true });
-  }, [location.state, navigate]);
+  }, [location.state, navigate, activatePackage]);
 
   const goToPackagePayment = () => {
     if (!selectedPkg) return;

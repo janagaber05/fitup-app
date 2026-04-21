@@ -254,10 +254,13 @@ function ProfilePage() {
   }, []);
   const includedPrivateSessions = currentSubscription.planId === "elite" ? 4 : 0;
   const currentCycle = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
-  const normalizedUsage =
-    monthlyPrivateUsage.cycle === currentCycle
-      ? monthlyPrivateUsage
-      : { cycle: currentCycle, used: 0 };
+  const normalizedUsage = useMemo(
+    () =>
+      monthlyPrivateUsage.cycle === currentCycle
+        ? monthlyPrivateUsage
+        : { cycle: currentCycle, used: 0 },
+    [monthlyPrivateUsage, currentCycle],
+  );
   const remainingIncludedSessions = Math.max(0, includedPrivateSessions - normalizedUsage.used);
   const profileRows = [
     { label: "Full Name", value: profileInfo.fullName },
