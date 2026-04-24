@@ -1,10 +1,12 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import BottomNav from "../components/BottomNav";
+import { parseArDeepLink } from "../utils/arQr";
 import "./GymsPage.css";
 
 function GymsPage() {
+  const navigate = useNavigate();
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerStatus, setScannerStatus] = useState("idle");
   const [scannerMessage, setScannerMessage] = useState("");
@@ -68,6 +70,18 @@ function GymsPage() {
       });
 
       if (result?.data) {
+        const ar = parseArDeepLink(result.data);
+        if (ar) {
+          setScannedCode(result.data);
+          setScannerStatus("success");
+          setScannerMessage("Equipment QR recognized. Opening AR tutorial…");
+          stopScanner();
+          navigate(
+            `/ar-tutorial?branch=${encodeURIComponent(ar.branch)}&machine=${encodeURIComponent(ar.machine)}`,
+          );
+          setScannerOpen(false);
+          return;
+        }
         setScannedCode(result.data);
         setScannerStatus("success");
         setScannerMessage("QR detected and verified. You are checked in.");
@@ -109,7 +123,7 @@ function GymsPage() {
       cancelled = true;
       stopScanner();
     };
-  }, [scannerOpen]);
+  }, [scannerOpen, navigate]);
 
   const openArScanner = () => {
     setScannerStatus("idle");

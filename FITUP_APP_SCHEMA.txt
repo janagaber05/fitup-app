@@ -1,0 +1,416 @@
+FITUP APP - DETAILED APPLICATION SCHEMA
+Version: 1.0
+Status: Draft for implementation alignment before AR finalization
+
+============================================================
+1) SYSTEM OVERVIEW
+============================================================
+FitUp is a fitness membership and engagement app with:
+- Authenticated user dashboard
+- Membership plans and billing status
+- Branch/location info and live capacity
+- Class/session booking
+- Progress tracking
+- AR equipment guidance (manual + auto detection)
+
+Primary architecture:
+- Frontend: React (web) + Capacitor (iOS/Android shell)
+- Optional backend: REST/GraphQL API (Node/Firebase/Supabase style)
+- AR detection providers:
+  - Teachable Machine (classification fallback)
+  - Roboflow Workflow (object detection for auto tracking)
+- Media source:
+  - Uploaded user videos (local/object storage)
+  - Sketchfab embedded 3D training model
+
+============================================================
+2) CORE DOMAIN MODEL (DATA ENTITIES)
+============================================================
+
+2.1 USERS
+Table: users
+- id (uuid, pk)
+- email (string, unique)
+- password_hash (string, nullable if social auth)
+- first_name (string)
+- last_name (string)
+- avatar_url (string, nullable)
+- phone (string, nullable)
+- role (enum: member, trainer, admin)
+- home_branch_id (uuid, fk branches.id, nullable)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Indexes:
+- unique(email)
+- idx_users_home_branch_id
+
+
+2.2 BRANCHES
+Table: branches
+- id (uuid, pk)
+- code (string, unique, e.g. DOWNTOWN, WESTSIDE)
+- name (string)
+- address_line_1 (string)
+- city (string)
+- country (string)
+- lat (decimal, nullable)
+- lng (decimal, nullable)
+- phone (string, nullable)
+- is_active (boolean)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Indexes:
+- unique(code)
+- idx_branches_city
+
+
+2.3 MEMBERSHIPS
+Table: membership_plans
+- id (uuid, pk)
+- code (string, unique)
+- name (string)
+- description (text)
+- price_monthly (decimal)
+- duration_days (int)
+- is_active (boolean)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Table: user_memberships
+- id (uuid, pk)
+- user_id (uuid, fk users.id)
+- plan_id (uuid, fk membership_plans.id)
+- status (enum: active, expired, paused, canceled)
+- starts_at (timestamp)
+- ends_at (timestamp)
+- usage_percent (int, 0-100, nullable)
+- auto_renew (boolean)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Indexes:
+- idx_user_memberships_user_id_status
+- idx_user_memberships_ends_at
+
+
+2.4 BOOKINGS / CLASSES
+Table: classes
+- id (uuid, pk)
+- branch_id (uuid, fk branches.id)
+- trainer_id (uuid, fk users.id, nullable)
+- title (string)
+- category (string)
+- start_time (timestamp)
+- end_time (timestamp)
+- capacity (int)
+- room (string, nullable)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Table: class_bookings
+- id (uuid, pk)
+- class_id (uuid, fk classes.id)
+- user_id (uuid, fk users.id)
+- status (enum: booked, attended, canceled, no_show)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Constraints:
+- unique(class_id, user_id)
+
+Indexes:
+- idx_classes_branch_start_time
+- idx_class_bookings_user_id_status
+
+
+2.5 UPDATES / NOTICES
+Table: updates
+- id (uuid, pk)
+- branch_id (uuid, fk branches.id, nullable for global)
+- title (string)
+- body (text)
+- type (enum: maintenance, promotion, announcement)
+- starts_at (timestamp, nullable)
+- ends_at (timestamp, nullable)
+- is_active (boolean)
+- created_at (timestamp)
+
+Indexes:
+- idx_updates_branch_id_is_active
+
+
+2.6 PROGRESS
+Table: user_progress_entries
+- id (uuid, pk)
+- user_id (uuid, fk users.id)
+- metric_type (enum: weight, body_fat, workout_count, personal_best, custom)
+- metric_value (decimal/string)
+- unit (string, nullable)
+- logged_at (timestamp)
+- notes (text, nullable)
+
+Indexes:
+- idx_progress_user_metric_logged_at
+
+============================================================
+3) AR DOMAIN SCHEMA
+============================================================
+
+3.1 MACHINE CATALOG (SHARED ACROSS BRANCHES)
+Table: machines
+- id (string, pk, e.g. chest_press, treadmill)
+- display_name (string)
+- category (string)
+- is_active (boolean)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Table: machine_tutorials
+- id (uuid, pk)
+- machine_id (string, fk machines.id)
+- title (string)
+- language (string, default en)
+- steps_json (json array of ordered steps)
+- safety_notes_json (json array, nullable)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Table: machine_hotspots
+- id (uuid, pk)
+- machine_id (string, fk machines.id)
+- label (string, e.g. Grip, Seat, Back)
+- normalized_x (decimal 0..1)
+- normalized_y (decimal 0..1)
+- z_hint (decimal, nullable for future native AR depth)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+
+3.2 BRANCH-SPECIFIC AR CALIBRATION
+Table: branch_machine_calibration
+- id (uuid, pk)
+- branch_id (uuid, fk branches.id)
+- machine_id (string, fk machines.id)
+- anchor_left_pct (decimal 0..100)
+- anchor_top_pct (decimal 0..100)
+- box_width_pct (decimal 0..100, nullable)
+- box_height_pct (decimal 0..100, nullable)
+- confidence_threshold (decimal, nullable)
+- updated_by (uuid, fk users.id, nullable)
+- updated_at (timestamp)
+
+Constraints:
+- unique(branch_id, machine_id)
+
+
+3.3 AR MEDIA
+Table: machine_demo_media
+- id (uuid, pk)
+- machine_id (string, fk machines.id)
+- media_type (enum: video, sketchfab, model_glb)
+- source_url (text)
+- thumbnail_url (text, nullable)
+- provider (enum: local_upload, s3, sketchfab, external)
+- is_default (boolean)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Table: user_machine_demo_overrides (optional)
+- id (uuid, pk)
+- user_id (uuid, fk users.id)
+- machine_id (string, fk machines.id)
+- media_id (uuid, fk machine_demo_media.id)
+- created_at (timestamp)
+
+
+3.4 DETECTION PROVIDER CONFIG
+Table: ar_detection_providers
+- id (uuid, pk)
+- provider_type (enum: teachable_machine, roboflow_workflow, native_ar)
+- name (string)
+- endpoint_url (text, nullable)
+- model_url (text, nullable)
+- is_active (boolean)
+- priority_order (int)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Table: ar_detection_label_map
+- id (uuid, pk)
+- provider_id (uuid, fk ar_detection_providers.id)
+- source_label (string)         # e.g. "chest press machine"
+- canonical_machine_id (string) # e.g. chest_press
+- created_at (timestamp)
+
+Indexes:
+- unique(provider_id, source_label)
+
+
+3.5 AR SESSION / ANALYTICS (OPTIONAL BUT RECOMMENDED)
+Table: ar_sessions
+- id (uuid, pk)
+- user_id (uuid, fk users.id)
+- branch_id (uuid, fk branches.id, nullable)
+- machine_id (string, fk machines.id, nullable)
+- mode (enum: manual, auto_detect)
+- started_at (timestamp)
+- ended_at (timestamp, nullable)
+- detection_success (boolean, nullable)
+
+Table: ar_events
+- id (uuid, pk)
+- session_id (uuid, fk ar_sessions.id)
+- event_type (enum: start_detection, detect_success, detect_fail, open_demo_video, open_3d_model, close_3d_model, open_guide)
+- payload_json (json, nullable)
+- created_at (timestamp)
+
+Indexes:
+- idx_ar_sessions_user_started_at
+- idx_ar_events_session_id_event_type
+
+============================================================
+4) FRONTEND STATE SCHEMA (REACT)
+============================================================
+
+4.1 AUTH STATE
+- currentUser
+- isAuthenticated
+- token/session
+
+4.2 AR PAGE STATE
+- machine (selected machine id)
+- activeTutorial (machine tutorial open or null)
+- manualMode (bool)
+- detectState (idle/running/ready/error)
+- detectMessage (status string)
+- anchorByMachine (machine -> {left, top})
+- trackedBoxByMachine (machine -> {width, height})
+- calloutLayoutByMachine (machine -> callout points)
+- overlayVideoByMachine (machine -> local blob/object URL)
+- showSketchfabModel (bool)
+- isOverlayVisible (bool)
+- isEditMode / isReanchorMode
+
+4.3 DATA FETCHED FOR AR
+- machine list
+- tutorial steps
+- hotspots
+- default media (video/sketchfab)
+- provider config (model URL / workflow endpoint)
+- label map aliases
+
+============================================================
+5) API SCHEMA (REST EXAMPLE)
+============================================================
+
+Auth:
+- POST /auth/login
+- POST /auth/register
+- GET  /auth/me
+
+Membership:
+- GET /membership/plans
+- GET /membership/me
+
+Branches:
+- GET /branches
+- GET /branches/:id
+- GET /branches/:id/capacity
+
+Bookings:
+- GET  /classes?branchId=&date=
+- POST /classes/:id/book
+- GET  /bookings/me
+
+AR Catalog:
+- GET /ar/machines
+- GET /ar/machines/:machineId/tutorial
+- GET /ar/machines/:machineId/hotspots
+- GET /ar/machines/:machineId/media
+
+AR Calibration:
+- GET  /ar/calibration?branchId=&machineId=
+- PUT  /ar/calibration (admin/trainer)
+
+AR Tracking Events:
+- POST /ar/sessions
+- POST /ar/sessions/:id/events
+- PATCH /ar/sessions/:id/end
+
+============================================================
+6) AR RENDERING SCHEMA (LOGICAL PIPELINE)
+============================================================
+
+Pipeline A - Manual AR:
+1) User opens AR page
+2) User toggles manual mode
+3) User taps machine 3D button
+4) App opens tutorial + hotspots + demo media
+5) Optional: open Sketchfab 3D embed overlay
+
+Pipeline B - Auto Detection AR:
+1) Camera frame captured
+2) Provider inference (Roboflow first, TM fallback)
+3) Label normalized via alias map -> canonical machine id
+4) Anchor + bounding box derived from detection
+5) Smoothing applied
+6) Hotspots projected inside bounding box
+7) User opens guide/demo
+
+============================================================
+7) MEDIA SCHEMA DETAILS
+============================================================
+
+Accepted upload:
+- video/mp4, video/webm (prefer mp4 h264)
+- max size configurable (e.g. 100MB)
+
+Storage strategy:
+- Local blob URL (current prototype)
+- Production: object storage (S3/R2/Supabase storage)
+
+Sketchfab:
+- store embed URL in machine_demo_media.source_url
+- policy for fallback if iframe blocked:
+  - open in new tab button
+
+============================================================
+8) SECURITY / PRIVACY SCHEMA
+============================================================
+
+- Never hardcode API keys in client for production
+- Move Roboflow calls to backend proxy for key protection
+- Add request rate limiting
+- Validate uploaded media mime type and size
+- Store minimum personal data needed
+- Add role-based permissions for calibration updates
+
+============================================================
+9) PERFORMANCE SCHEMA
+============================================================
+
+- Detection interval: 800ms-1500ms configurable
+- Frame image quality: jpeg 0.65-0.8
+- Smoothing factor: 0.2-0.35 blend
+- Use throttling for AR event logging
+- Lazy load heavy AR/3D components
+
+============================================================
+10) IMPLEMENTATION CHECKLIST (NEXT)
+============================================================
+
+1. Stabilize manual AR UX
+   - finalize buttons, overlays, show/hide behavior
+2. Finalize Roboflow output parsing
+   - verify prediction shape with live response
+3. Add canonical label mapping table/config
+4. Persist per-machine hotspot edits
+5. Move detection API calls server-side (secure key)
+6. Add analytics events for AR session quality
+7. Add native ARKit/ARCore phase (future)
+
+============================================================
+END OF SCHEMA
+============================================================
