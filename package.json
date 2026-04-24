@@ -9,6 +9,7 @@
     "@capacitor/ios": "^8.3.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.0",
+    "@supabase/supabase-js": "^2.104.1",
     "@teachablemachine/image": "^0.8.5",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -30,6 +31,7 @@
     "mobile:android": "npm run mobile:sync && npx cap open android",
     "mobile:ios": "npm run mobile:sync && npx cap open ios",
     "mobile:apk:debug": "npm run mobile:sync && cd android && ./gradlew assembleDebug",
+    "yolo:serve": ".venv/bin/python scripts/yolo_serve.py",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

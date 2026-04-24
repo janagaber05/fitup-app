@@ -1,0 +1,126 @@
+FITUP — SUPABASE INTEGRATION (THIS REPO)
+========================================
+
+1) PROJECT SCAN (what this codebase is)
+----------------------------------------
+- Package manager: npm (package-lock.json in my-app/)
+- UI framework: React 19 + react-router-dom 7
+- Build: Create React App (react-scripts 5) — NOT Expo, NOT React Native bare
+- Mobile: Capacitor 8 wraps the CRA web build (npm run build → npx cap sync)
+- Env today: my-app/.env with REACT_APP_* keys (CRA embeds only REACT_APP_ at build time)
+
+Paths of interest:
+- my-app/package.json
+- my-app/.env  (local secrets — do not commit)
+- my-app/.env.example  (safe template — commit this)
+- my-app/src/lib/supabaseClient.js  (createClient singleton)
+- my-app/src/lib/controlPlane.js   (example queries)
+
+
+2) WHAT TO INSTALL
+------------------
+Already added to my-app/package.json:
+
+  npm install @supabase/supabase-js
+
+That is the correct client for React web + Capacitor WebView (same as browser).
+
+
+3) ENV VARIABLE NAMES & WHERE TO PUT THEM
+-----------------------------------------
+Create React App rule: ONLY variables prefixed with REACT_APP_ are available in the browser as process.env.REACT_APP_*.
+
+Add to:  my-app/.env
+
+  REACT_APP_SUPABASE_URL=https://<project-ref>.supabase.co
+  REACT_APP_SUPABASE_ANON_KEY=<anon public key from Dashboard → Settings → API>
+
+Never add:
+  SUPABASE_SERVICE_ROLE_KEY
+to the client or .env that ships in the app bundle — it would be exposed.
+
+Capacitor / production builds:
+- Values are baked in at `npm run build` time. Change .env → rebuild → `npm run mobile:sync`.
+- For per-environment builds (staging/prod), use separate .env.production / CI secrets injection before build, or a small runtime config endpoint (not implemented here).
+
+Xcode / Android Studio:
+- No native env scheme required for Supabase URL/key if they live in REACT_APP_* at web build time.
+- If you later add native plugins that need secrets, use xcconfig / gradle.properties (still not service_role).
+
+
+4) MINIMAL createClient SETUP (this repo)
+-----------------------------------------
+File: my-app/src/lib/supabaseClient.js
+
+  import { createClient } from "@supabase/supabase-js";
+
+  const supabaseUrl = (process.env.REACT_APP_SUPABASE_URL || "").trim();
+  const supabaseAnonKey = (process.env.REACT_APP_SUPABASE_ANON_KEY || "").trim();
+
+  export const supabase =
+    supabaseUrl && supabaseAnonKey
+      ? createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { persistSession: true, autoRefreshToken: true },
+        })
+      : null;
+
+  export function isSupabaseConfigured() {
+    return Boolean(supabaseUrl && supabaseAnonKey);
+  }
+
+
+5) EXAMPLE QUERIES (published content + global flags)
+-----------------------------------------------------
+File: my-app/src/lib/controlPlane.js
+
+- loadPublishedContentRegistry() — selects from content_registry with .eq("status", "published")
+  If your column differs (e.g. is_published, publish_state), change that line to match migrations.
+
+- loadGlobalFeatureFlags() — selects from feature_flags with .eq("scope", "global")
+
+Usage in any component:
+
+  import { loadPublishedContentRegistry } from "../lib/controlPlane";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await loadPublishedContentRegistry({ limit: 20 });
+      if (cancelled) return;
+      if (error) {
+        console.error(error);
+        // show toast / fallback UI
+        return;
+      }
+      console.log(data);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+
+6) RLS: ANON VS AUTHENTICATED
+------------------------------
+- If migration 006_fitup_control_plane_anon_read.sql (or equivalent) grants SELECT to anon
+  on published/global rows only, then the app can read control plane data with no login,
+  using only REACT_APP_SUPABASE_ANON_KEY.
+
+- If those policies are NOT applied, PostgREST will return empty data or 401/403-style errors
+  for anonymous key — then you must:
+  - use Supabase Auth (email magic link, OAuth, etc.), and
+  - policies that allow authenticated role to read (or service role only on server — never in app).
+
+Logged-in users: session JWT is sent automatically by supabase-js after signIn; RLS can distinguish auth.uid().
+
+Anonymous app users: only what anon policies allow.
+
+
+7) MOBILE / CAPACITOR NOTES
+---------------------------
+- HTTPS: use https://*.supabase.co (default). Capacitor WebView allows normal TLS to Supabase.
+- If you add Supabase Auth with redirect URLs, add in Supabase Dashboard → Authentication → URL config:
+  - https://localhost:3000 (dev)
+  - capacitor://localhost or ionic://localhost (Capacitor default scheme — confirm in capacitor.config)
+  - custom app scheme if you set server.url / hostname in capacitor.config.ts
+- Deep links: for OAuth return, configure intent filters (Android) and Associated Domains / universal links (iOS) if using custom domains.
+
+Sketchfab / third-party iframes: unrelated to Supabase; keep separate CSP if you tighten headers.

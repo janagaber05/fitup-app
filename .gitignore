@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.venv
 /.pnp
 .pnp.js
 
@@ -15,6 +16,9 @@
 .DS_Store
 .env.local
 .env.development.local
+
+# Large YOLO weights (keep locally; avoid bloating git)
+public/model ai/*.pt
 .env.test.local
 .env.production.local
 

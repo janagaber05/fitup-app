@@ -1,8 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { detectWithYoloServer, isYoloServerConfigured } from "../lib/yoloRemoteDetection";
 
 const MACHINE_IDS = ["chest_press", "treadmill"];
+/** YOLOv8 class slugs (13) — match your `data.yaml` / training names after normalize. */
+const YOLO_CLASS_SLUGS = [
+  "arm_curl_machine",
+  "chest_fly_machine",
+  "chest_press_machine",
+  "chinning_dipping",
+  "lat_pull_down",
+  "lateral_raises_machine",
+  "leg_extension",
+  "leg_press",
+  "reg_curl_machine",
+  "seated_cable_rows",
+  "seated_dip_machine",
+  "shoulder_press_machine",
+  "smith_machine",
+];
+const MACHINE_ALLOWED_FOR_DETECTION = new Set([...MACHINE_IDS, ...YOLO_CLASS_SLUGS]);
 const DETECTION_THRESHOLD = 0.82;
+const YOLO_CONFIDENCE_THRESHOLD = 0.45;
 const MODEL_BASE_URL = (process.env.REACT_APP_TM_MODEL_URL || "").trim();
 const ROBOFLOW_WORKFLOW_URL = (process.env.REACT_APP_ROBOFLOW_WORKFLOW_URL || "").trim();
 const ROBOFLOW_API_KEY = (process.env.REACT_APP_ROBOFLOW_API_KEY || "").trim();
@@ -16,8 +35,15 @@ const MACHINE_LABEL_ALIASES = {
   tread_mill: "treadmill",
 };
 
+function humanizeSlug(slug) {
+  return String(slug || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function normalizeMachineId(id) {
-  return MACHINE_IDS.includes(id) ? id : "chest_press";
+  if (MACHINE_ALLOWED_FOR_DETECTION.has(id)) return id;
+  return "chest_press";
 }
 
 export default function EquipmentAR() {
@@ -95,42 +121,66 @@ export default function EquipmentAR() {
       ],
     },
   };
+  const yoloGenericGuide = {
+    steps: [
+      "Check the machine is set correctly",
+      "Start with light resistance",
+      "Maintain neutral posture",
+      "Stop if you feel sharp pain",
+    ],
+    arrows: [
+      { top: "50%", left: "36%", symbol: "▲" },
+      { top: "46%", left: "50%", symbol: "▲" },
+    ],
+    callouts: [
+      { top: "58%", left: "50%", text: "Warm up before heavy sets" },
+      { top: "48%", left: "50%", text: "Controlled range of motion" },
+    ],
+    hotspots: [
+      { label: "Setup", x: 0.5, y: 0.38 },
+      { label: "Grip", x: 0.65, y: 0.45 },
+      { label: "Position", x: 0.35, y: 0.5 },
+    ],
+  };
+  YOLO_CLASS_SLUGS.forEach((slug) => {
+    tutorials[slug] = { title: humanizeSlug(slug), ...yoloGenericGuide };
+  });
+
   const machineAnchors = [
     { id: "chest_press", top: "64%", left: "12%" },
     { id: "treadmill", top: "42%", left: "58%" },
   ];
 
-  const prettyMachineName = (id) =>
-    id === "chest_press" ? "Chest Press" : id === "treadmill" ? "Treadmill" : "Machine";
-
-  const initialCalloutLayout = {
-    chest_press: tutorials.chest_press.callouts.map((point) => ({
-      top: Number.parseFloat(point.top),
-      left: Number.parseFloat(point.left),
-      text: point.text,
-    })),
-    treadmill: tutorials.treadmill.callouts.map((point) => ({
-      top: Number.parseFloat(point.top),
-      left: Number.parseFloat(point.left),
-      text: point.text,
-    })),
+  const prettyMachineName = (id) => {
+    if (id === "chest_press") return "Chest Press";
+    if (id === "treadmill") return "Treadmill";
+    if (tutorials[id]?.title) return tutorials[id].title;
+    return "Machine";
   };
+
+  const initialCalloutLayout = Object.fromEntries(
+    Object.keys(tutorials).map((key) => [
+      key,
+      tutorials[key].callouts.map((point) => ({
+        top: Number.parseFloat(point.top),
+        left: Number.parseFloat(point.left),
+        text: point.text,
+      })),
+    ]),
+  );
   const [calloutLayoutByMachine, setCalloutLayoutByMachine] = useState(initialCalloutLayout);
-  const initialAnchorByMachine = machineAnchors.reduce((acc, anchor) => {
-    acc[anchor.id] = {
-      top: Number.parseFloat(anchor.top),
-      left: Number.parseFloat(anchor.left),
-    };
-    return acc;
-  }, {});
+  const initialAnchorByMachine = {
+    ...machineAnchors.reduce((acc, anchor) => {
+      acc[anchor.id] = {
+        top: Number.parseFloat(anchor.top),
+        left: Number.parseFloat(anchor.left),
+      };
+      return acc;
+    }, {}),
+    ...Object.fromEntries(YOLO_CLASS_SLUGS.map((slug) => [slug, { top: 50, left: 50 }])),
+  };
   const [anchorByMachine, setAnchorByMachine] = useState(initialAnchorByMachine);
 
-  // detectMachineFromFrame is intentionally recreated with latest refs/state;
-  // interval uses the latest closure each render cycle.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     return () => {
       Object.values(overlayVideoByMachine).forEach((url) => {
@@ -146,8 +196,11 @@ export default function EquipmentAR() {
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
     if (MACHINE_LABEL_ALIASES[normalized]) return MACHINE_LABEL_ALIASES[normalized];
+    if (YOLO_CLASS_SLUGS.includes(normalized)) return normalized;
     return MACHINE_IDS.includes(normalized) ? normalized : null;
   };
+
+  const slugFromYoloClassName = (raw) => toMachineId(raw);
 
   const extractWorkflowPredictions = (payload) => {
     const candidateArrays = [];
@@ -289,6 +342,33 @@ export default function EquipmentAR() {
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, width, height);
 
+    if (isYoloServerConfigured()) {
+      const top = await detectWithYoloServer(canvas);
+      if (top) {
+        const slug = slugFromYoloClassName(top.class_name);
+        if (slug && Number(top.confidence) >= YOLO_CONFIDENCE_THRESHOLD) {
+          const iw = top.image_width || width;
+          const ih = top.image_height || height;
+          const leftPct = (top.x / iw) * 100;
+          const topPct = (top.y / ih) * 100;
+          const wPct = (top.width / iw) * 100;
+          const hPct = (top.height / ih) * 100;
+          return {
+            machineId: slug,
+            confidence: Number(top.confidence),
+            anchor: {
+              left: Math.min(95, Math.max(5, leftPct)),
+              top: Math.min(95, Math.max(5, topPct)),
+            },
+            box: {
+              width: Math.min(90, Math.max(12, wPct)),
+              height: Math.min(90, Math.max(12, hPct)),
+            },
+          };
+        }
+      }
+    }
+
     if (ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY) {
       const workflowDetection = await detectMachineFromRoboflow(canvas);
       if (!workflowDetection) return null;
@@ -329,10 +409,10 @@ export default function EquipmentAR() {
 
   const handleStartDetection = async () => {
     if (cameraState !== "ready") return;
-    if (!MODEL_BASE_URL && !(ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY)) {
+    if (!MODEL_BASE_URL && !(ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY) && !isYoloServerConfigured()) {
       setDetectState("error");
       setDetectMessage(
-        "No detector configured. Add Teachable Machine URL or Roboflow workflow env vars, then restart app.",
+        "No detector configured. Set REACT_APP_YOLO_API_URL (local YOLO server), or Roboflow / Teachable Machine env vars, then restart.",
       );
       return;
     }
@@ -344,7 +424,7 @@ export default function EquipmentAR() {
     for (let i = 0; i < 10; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       found = await detectMachineFromFrame();
-      if (found?.machineId && MACHINE_IDS.includes(found.machineId)) {
+      if (found?.machineId && MACHINE_ALLOWED_FOR_DETECTION.has(found.machineId)) {
         break;
       }
       // Small delay between frame checks
@@ -352,7 +432,7 @@ export default function EquipmentAR() {
       await new Promise((resolve) => setTimeout(resolve, 180));
     }
 
-    if (found?.machineId && MACHINE_IDS.includes(found.machineId)) {
+    if (found?.machineId && MACHINE_ALLOWED_FOR_DETECTION.has(found.machineId)) {
       const detected = normalizeMachineId(found.machineId);
       setMachine(detected);
       if (found.anchor) {
@@ -696,7 +776,7 @@ export default function EquipmentAR() {
           : null}
 
         {cameraState === "ready" && activeTutorial
-          ? tutorials[activeTutorial].arrows.map((arrow, index) => {
+          ? (tutorials[activeTutorial] || tutorials.chest_press).arrows.map((arrow, index) => {
               const shiftedArrow = shiftToCurrentAnchor(activeTutorial, {
                 top: Number.parseFloat(arrow.top),
                 left: Number.parseFloat(arrow.left),
@@ -724,7 +804,7 @@ export default function EquipmentAR() {
           : null}
 
         {cameraState === "ready" && activeTutorial && trackedBoxByMachine[activeTutorial]
-          ? tutorials[activeTutorial].hotspots.map((hotspot, index) => {
+          ? (tutorials[activeTutorial] || tutorials.chest_press).hotspots.map((hotspot, index) => {
               const anchor = anchorByMachine[activeTutorial] || initialAnchorByMachine[activeTutorial];
               const box = trackedBoxByMachine[activeTutorial];
               if (!anchor || !box) return null;
@@ -1183,8 +1263,10 @@ export default function EquipmentAR() {
             marginTop: 12,
           }}
         >
-          <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>{tutorials[activeTutorial].title} (AR Guide)</h2>
-          {tutorials[activeTutorial].steps.map((step, index) => (
+          <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
+            {(tutorials[activeTutorial] || tutorials.chest_press).title} (AR Guide)
+          </h2>
+          {(tutorials[activeTutorial] || tutorials.chest_press).steps.map((step, index) => (
             <p key={index} style={{ margin: "0 0 8px", color: "#d8dbe0", fontSize: 13 }}>
               👉 {step}
             </p>
