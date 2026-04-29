@@ -24,8 +24,10 @@ const DETECTION_THRESHOLD = 0.75;
 const YOLO_CONFIDENCE_THRESHOLD = 0.32;
 const MIN_BOX_PERCENT = 12;
 const MODEL_BASE_URL = (process.env.REACT_APP_TM_MODEL_URL || "").trim();
-const ROBOFLOW_WORKFLOW_URL = (process.env.REACT_APP_ROBOFLOW_WORKFLOW_URL || "").trim();
-const ROBOFLOW_API_KEY = (process.env.REACT_APP_ROBOFLOW_API_KEY || "").trim();
+const DEFAULT_ROBOFLOW_WORKFLOW_URL = "https://serverless.roboflow.com/janas-workspace-y5gre/workflows/detect-and-classify";
+const DEFAULT_ROBOFLOW_API_KEY = "qrRTvZ4S8QwA65qhYCvO";
+const ROBOFLOW_WORKFLOW_URL = (process.env.REACT_APP_ROBOFLOW_WORKFLOW_URL || DEFAULT_ROBOFLOW_WORKFLOW_URL).trim();
+const ROBOFLOW_API_KEY = (process.env.REACT_APP_ROBOFLOW_API_KEY || DEFAULT_ROBOFLOW_API_KEY).trim();
 const SKETCHFAB_EMBED_URL = "https://sketchfab.com/models/d862a67af82d43ecaabec2d638c9e2b5/embed";
 const MACHINE_LABEL_ALIASES = {
   chest_press: "chest_press",
