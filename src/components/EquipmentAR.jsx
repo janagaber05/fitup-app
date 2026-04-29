@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { detectWithYoloServer, isYoloServerConfigured } from "../lib/yoloRemoteDetection";
 
 const MACHINE_IDS = ["chest_press", "treadmill"];
@@ -22,6 +22,7 @@ const YOLO_CLASS_SLUGS = [
 const MACHINE_ALLOWED_FOR_DETECTION = new Set([...MACHINE_IDS, ...YOLO_CLASS_SLUGS]);
 const DETECTION_THRESHOLD = 0.82;
 const YOLO_CONFIDENCE_THRESHOLD = 0.45;
+const MIN_BOX_PERCENT = 12;
 const MODEL_BASE_URL = (process.env.REACT_APP_TM_MODEL_URL || "").trim();
 const ROBOFLOW_WORKFLOW_URL = (process.env.REACT_APP_ROBOFLOW_WORKFLOW_URL || "").trim();
 const ROBOFLOW_API_KEY = (process.env.REACT_APP_ROBOFLOW_API_KEY || "").trim();
@@ -47,11 +48,13 @@ function normalizeMachineId(id) {
 }
 
 export default function EquipmentAR() {
+  const navigate = useNavigate();
   const [machine, setMachine] = useState("chest_press");
   const [cameraState, setCameraState] = useState("loading");
   const [activeTutorial, setActiveTutorial] = useState(null);
   const [detectState, setDetectState] = useState("idle");
-  const [detectMessage, setDetectMessage] = useState("Point camera at a machine and tap Start Detection.");
+  const [detectMessage, setDetectMessage] = useState("Point camera at a machine.");
+  const [detectConfidencePct, setDetectConfidencePct] = useState(null);
   const [manualMode, setManualMode] = useState(true);
   const [showSketchfabModel, setShowSketchfabModel] = useState(false);
   const [overlayVideoByMachine, setOverlayVideoByMachine] = useState({});
@@ -61,12 +64,17 @@ export default function EquipmentAR() {
   const [isReanchorMode, setIsReanchorMode] = useState(false);
   const [selectedCalloutIndex, setSelectedCalloutIndex] = useState(0);
   const [trackedBoxByMachine, setTrackedBoxByMachine] = useState({});
+  const [trackingQualityByMachine, setTrackingQualityByMachine] = useState({});
+  const [showTipsOverlay, setShowTipsOverlay] = useState(true);
+  const [cameraAspectRatio, setCameraAspectRatio] = useState(16 / 9);
+  const [isCameraMirrored, setIsCameraMirrored] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cameraWrapRef = useRef(null);
   const streamRef = useRef(null);
   const modelRef = useRef(null);
   const detectMachineFromFrameRef = useRef(null);
+  const lostTrackCountRef = useRef(0);
 
   const tutorials = {
     chest_press: {
@@ -94,6 +102,25 @@ export default function EquipmentAR() {
         { label: "Seat", x: 0.47, y: 0.58 },
         { label: "Push", x: 0.8, y: 0.42 },
       ],
+      tips: [
+        {
+          title: "Setup Checklist",
+          points: [
+            "Align handles with mid-chest before first rep.",
+            "Keep feet flat and shoulder blades pressed into backrest.",
+            "Start with a light warm-up set before adding load.",
+          ],
+        },
+        {
+          title: "Grip Control",
+          trackHotspot: "Grip",
+          points: [
+            "Wrap thumb around handles and keep wrist neutral.",
+            "Push in a straight line; avoid flaring elbows too far out.",
+            "Slowly return to the start to protect shoulder joints.",
+          ],
+        },
+      ],
     },
     treadmill: {
       title: "Treadmill",
@@ -119,6 +146,25 @@ export default function EquipmentAR() {
         { label: "Deck", x: 0.5, y: 0.6 },
         { label: "Safety", x: 0.4, y: 0.3 },
       ],
+      tips: [
+        {
+          title: "Walking Form",
+          points: [
+            "Look forward and keep your shoulders relaxed.",
+            "Land softly under your hips; avoid overstriding.",
+            "Increase speed gradually, not in large jumps.",
+          ],
+        },
+        {
+          title: "Handle Usage",
+          trackHotspot: "Handles",
+          points: [
+            "Use handles for balance only, not to pull your body weight.",
+            "Relax your grip once your pace is stable.",
+            "Keep posture upright while hands stay light.",
+          ],
+        },
+      ],
     },
   };
   const yoloGenericGuide = {
@@ -141,9 +187,105 @@ export default function EquipmentAR() {
       { label: "Grip", x: 0.65, y: 0.45 },
       { label: "Position", x: 0.35, y: 0.5 },
     ],
+    tips: [
+      {
+        title: "Machine Safety",
+        points: [
+          "Adjust seat and range of motion before loading weight.",
+          "Keep controlled tempo through both directions.",
+          "Stop immediately if you feel sharp pain.",
+        ],
+      },
+      {
+        title: "Grip Check",
+        trackHotspot: "Grip",
+        points: [
+          "Keep the wrist straight and thumb wrapped around handle.",
+          "Avoid squeezing too hard; maintain a stable, calm grip.",
+          "Reposition grip if tracking shows unstable placement.",
+        ],
+      },
+    ],
+  };
+  const machineSpecificGuides = {
+    reg_curl_machine: {
+      title: "Leg Curl Machine",
+      steps: [
+        "Align knee with machine pivot point",
+        "Pad sits above your ankle/Achilles",
+        "Curl smoothly, do not swing hips",
+        "Lower slowly to full control",
+      ],
+      hotspots: [
+        { label: "Knee", x: 0.46, y: 0.5 },
+        { label: "Ankle Pad", x: 0.66, y: 0.65 },
+        { label: "Grip", x: 0.34, y: 0.42 },
+      ],
+      tips: [
+        {
+          title: "Leg Curl Setup",
+          points: [
+            "Set back pad so knees line up with axis of rotation.",
+            "Keep hips down on the bench throughout each rep.",
+            "Start light and increase load after technique is stable.",
+          ],
+        },
+        {
+          title: "Grip & Stability",
+          trackHotspot: "Grip",
+          points: [
+            "Hold side handles firmly to stop hip lift.",
+            "Brace core and keep pelvis neutral while curling.",
+            "If tracking is unstable, reset hand placement on handles.",
+          ],
+        },
+      ],
+    },
+    leg_extension: {
+      title: "Leg Extension",
+      hotspots: [
+        { label: "Knee", x: 0.5, y: 0.48 },
+        { label: "Shin Pad", x: 0.68, y: 0.65 },
+        { label: "Grip", x: 0.35, y: 0.44 },
+      ],
+      tips: [
+        {
+          title: "Knee Alignment",
+          trackHotspot: "Knee",
+          points: [
+            "Match knee joint with machine pivot before starting.",
+            "Avoid locking knees hard at the top position.",
+            "Lower under control to protect the joint.",
+          ],
+        },
+      ],
+    },
+    chest_fly_machine: {
+      title: "Chest Fly Machine",
+      hotspots: [
+        { label: "Grip", x: 0.64, y: 0.43 },
+        { label: "Seat", x: 0.47, y: 0.6 },
+        { label: "Elbow Path", x: 0.75, y: 0.4 },
+      ],
+      tips: [
+        {
+          title: "Fly Form",
+          trackHotspot: "Elbow Path",
+          points: [
+            "Keep elbows slightly bent through the full rep.",
+            "Bring handles together with chest, not shoulder shrug.",
+            "Return slowly to feel stretch without joint stress.",
+          ],
+        },
+      ],
+    },
   };
   YOLO_CLASS_SLUGS.forEach((slug) => {
-    tutorials[slug] = { title: humanizeSlug(slug), ...yoloGenericGuide };
+    tutorials[slug] = {
+      title: humanizeSlug(slug),
+      ...yoloGenericGuide,
+      ...(machineSpecificGuides[slug] || {}),
+    };
   });
 
   const machineAnchors = [
@@ -201,6 +343,16 @@ export default function EquipmentAR() {
   };
 
   const slugFromYoloClassName = (raw) => toMachineId(raw);
+  const detectionButtonLabel =
+    detectState === "running"
+      ? "Detecting..."
+      : detectState === "ready" && (activeTutorial || machine)
+        ? `Detected: ${prettyMachineName(activeTutorial || machine)}${
+            Number.isFinite(detectConfidencePct) ? ` (${detectConfidencePct}%)` : ""
+          }`
+        : detectState === "error"
+          ? "Detection Error"
+          : "Start Detection";
 
   const extractWorkflowPredictions = (payload) => {
     const candidateArrays = [];
@@ -343,26 +495,41 @@ export default function EquipmentAR() {
     ctx.drawImage(video, 0, 0, width, height);
 
     if (isYoloServerConfigured()) {
-      const top = await detectWithYoloServer(canvas);
-      if (top) {
-        const slug = slugFromYoloClassName(top.class_name);
-        if (slug && Number(top.confidence) >= YOLO_CONFIDENCE_THRESHOLD) {
-          const iw = top.image_width || width;
-          const ih = top.image_height || height;
-          const leftPct = (top.x / iw) * 100;
-          const topPct = (top.y / ih) * 100;
-          const wPct = (top.width / iw) * 100;
-          const hPct = (top.height / ih) * 100;
+      const predictions = await detectWithYoloServer(canvas);
+      if (Array.isArray(predictions) && predictions.length) {
+        const supported = predictions
+          .map((item) => {
+            const slug = slugFromYoloClassName(item.class_name);
+            return slug ? { ...item, slug } : null;
+          })
+          .filter(Boolean)
+          .filter((item) => Number(item.confidence || 0) >= YOLO_CONFIDENCE_THRESHOLD);
+        if (supported.length) {
+          const best = supported.reduce((currentBest, item) => {
+            const conf = Number(item.confidence || 0);
+            const bestConf = Number(currentBest.confidence || 0);
+            if (conf > bestConf) return item;
+            if (conf < bestConf) return currentBest;
+            const area = Number(item.width || 0) * Number(item.height || 0);
+            const bestArea = Number(currentBest.width || 0) * Number(currentBest.height || 0);
+            return area > bestArea ? item : currentBest;
+          }, supported[0]);
+          const iw = best.image_width || width;
+          const ih = best.image_height || height;
+          const leftPct = (best.x / iw) * 100;
+          const topPct = (best.y / ih) * 100;
+          const wPct = (best.width / iw) * 100;
+          const hPct = (best.height / ih) * 100;
           return {
-            machineId: slug,
-            confidence: Number(top.confidence),
+            machineId: best.slug,
+            confidence: Number(best.confidence),
             anchor: {
               left: Math.min(95, Math.max(5, leftPct)),
               top: Math.min(95, Math.max(5, topPct)),
             },
             box: {
-              width: Math.min(90, Math.max(12, wPct)),
-              height: Math.min(90, Math.max(12, hPct)),
+              width: Math.min(90, Math.max(MIN_BOX_PERCENT, wPct)),
+              height: Math.min(90, Math.max(MIN_BOX_PERCENT, hPct)),
             },
           };
         }
@@ -379,8 +546,8 @@ export default function EquipmentAR() {
         confidence: workflowDetection.confidence,
         anchor: { left: normalizedLeft, top: normalizedTop },
         box: {
-          width: Math.min(90, Math.max(12, (workflowDetection.box.width / width) * 100)),
-          height: Math.min(90, Math.max(12, (workflowDetection.box.height / height) * 100)),
+          width: Math.min(90, Math.max(MIN_BOX_PERCENT, (workflowDetection.box.width / width) * 100)),
+          height: Math.min(90, Math.max(MIN_BOX_PERCENT, (workflowDetection.box.height / height) * 100)),
         },
       };
     }
@@ -418,14 +585,31 @@ export default function EquipmentAR() {
     }
 
     setDetectState("running");
+    setDetectConfidencePct(null);
     setDetectMessage("Detecting machine...");
 
     let found = null;
-    for (let i = 0; i < 10; i += 1) {
+    let candidateId = null;
+    let candidateCount = 0;
+    let candidateBest = null;
+    for (let i = 0; i < 12; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      found = await detectMachineFromFrame();
-      if (found?.machineId && MACHINE_ALLOWED_FOR_DETECTION.has(found.machineId)) {
-        break;
+      const sample = await detectMachineFromFrame();
+      if (sample?.machineId && MACHINE_ALLOWED_FOR_DETECTION.has(sample.machineId)) {
+        if (sample.machineId !== candidateId) {
+          candidateId = sample.machineId;
+          candidateCount = 1;
+          candidateBest = sample;
+        } else {
+          candidateCount += 1;
+          if (Number(sample.confidence || 0) > Number(candidateBest?.confidence || 0)) {
+            candidateBest = sample;
+          }
+        }
+        if (candidateCount >= 2) {
+          found = candidateBest;
+          break;
+        }
       }
       // Small delay between frame checks
       // eslint-disable-next-line no-await-in-loop
@@ -435,6 +619,7 @@ export default function EquipmentAR() {
     if (found?.machineId && MACHINE_ALLOWED_FOR_DETECTION.has(found.machineId)) {
       const detected = normalizeMachineId(found.machineId);
       setMachine(detected);
+      setActiveTutorial(detected);
       if (found.anchor) {
         setAnchorByMachine((prev) => ({
           ...prev,
@@ -451,12 +636,14 @@ export default function EquipmentAR() {
         }));
       }
       setDetectState("ready");
-      const confidencePct = Math.round(found.confidence * 100);
+      const confidencePct = Math.round(Number(found.confidence || 0) * 100);
+      setDetectConfidencePct(confidencePct);
       setDetectMessage(`Detected: ${prettyMachineName(detected)} (${confidencePct}%). Tap Start Guide.`);
       return;
     }
 
     setDetectState("idle");
+    setDetectConfidencePct(null);
     setDetectMessage(
       "No supported machine found in view yet. Point camera to chest press/treadmill and try Start Detection again.",
     );
@@ -491,6 +678,21 @@ export default function EquipmentAR() {
     return {
       top: point.top + (current.top - base.top),
       left: point.left + (current.left - base.left),
+    };
+  };
+
+  const getTrackedHotspotPosition = (machineId, hotspotLabel) => {
+    if (!machineId || !hotspotLabel) return null;
+    const box = trackedBoxByMachine[machineId];
+    if (!box) return null;
+    const anchor = anchorByMachine[machineId] || initialAnchorByMachine[machineId];
+    const hotspot = (tutorials[machineId]?.hotspots || []).find(
+      (item) => String(item.label).toLowerCase() === String(hotspotLabel).toLowerCase(),
+    );
+    if (!anchor || !hotspot) return null;
+    return {
+      left: anchor.left - box.width / 2 + box.width * hotspot.x,
+      top: anchor.top - box.height / 2 + box.height * hotspot.y,
     };
   };
 
@@ -542,18 +744,62 @@ export default function EquipmentAR() {
     setIsReanchorMode(false);
   };
 
+  const handleExitAr = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setDetectState("idle");
+    setDetectConfidencePct(null);
+    setActiveTutorial(null);
+    setCameraState("loading");
+    setDetectMessage("AR stopped.");
+    navigate("/gyms");
+  };
+
+  const handleFlipCamera = () => {
+    setIsCameraMirrored((current) => !current);
+  };
+
   useEffect(() => {
     if (detectState !== "ready") return undefined;
-    if (!(ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY)) return undefined;
+    const hasAnyDetector =
+      isYoloServerConfigured() || (ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY) || Boolean(MODEL_BASE_URL);
+    if (!hasAnyDetector) return undefined;
     let cancelled = false;
     const interval = setInterval(async () => {
       if (cancelled) return;
       const found = await detectMachineFromFrameRef.current?.();
-      if (!found?.machineId || !found.anchor) return;
       const target = activeTutorial || machine;
-      if (found.machineId !== target) return;
+      if (!found?.machineId || !found.anchor) {
+        lostTrackCountRef.current += 1;
+        if (lostTrackCountRef.current >= 4) {
+          setDetectState("idle");
+          setDetectConfidencePct(null);
+          setActiveTutorial(null);
+          setDetectMessage("Machine left camera view. Detection stopped.");
+          setTrackingQualityByMachine((prev) => ({ ...prev, [target]: "poor" }));
+          lostTrackCountRef.current = 0;
+        }
+        return;
+      }
+      // Ignore transient wrong-class detections while locked on current machine.
+      if (found.machineId !== target) {
+        return;
+      }
+      lostTrackCountRef.current = 0;
       setAnchorByMachine((prev) => {
         const current = prev[target] || found.anchor;
+        const dx = found.anchor.left - current.left;
+        const dy = found.anchor.top - current.top;
+        const movement = Math.sqrt(dx * dx + dy * dy);
+        const boxArea = (found.box?.width || 0) * (found.box?.height || 0);
+        const quality =
+          movement < 3 && boxArea > 240 ? "good" : movement < 6 && boxArea > 170 ? "fair" : "poor";
+        setTrackingQualityByMachine((prevQuality) => ({ ...prevQuality, [target]: quality }));
         return {
           ...prev,
           [target]: {
@@ -574,7 +820,7 @@ export default function EquipmentAR() {
           };
         });
       }
-    }, 1200);
+    }, 450);
 
     return () => {
       cancelled = true;
@@ -587,8 +833,15 @@ export default function EquipmentAR() {
 
     const startCamera = async () => {
       try {
+        setCameraState("loading");
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            aspectRatio: { ideal: 16 / 9 },
+            resizeMode: "none",
+          },
           audio: false,
         });
         if (cancelled) {
@@ -596,9 +849,17 @@ export default function EquipmentAR() {
           return;
         }
         streamRef.current = stream;
+        const videoTrack = stream.getVideoTracks()[0];
+        const capabilities = videoTrack?.getCapabilities?.();
+        if (capabilities?.zoom) {
+          await videoTrack.applyConstraints({ advanced: [{ zoom: capabilities.zoom.min }] }).catch(() => {});
+        }
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
+          if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
+            setCameraAspectRatio(videoRef.current.videoWidth / videoRef.current.videoHeight);
+          }
         }
         setCameraState("ready");
       } catch {
@@ -621,668 +882,186 @@ export default function EquipmentAR() {
     <main
       style={{
         minHeight: "100vh",
-        background: "#121212",
+        background: "#000",
         color: "white",
-        padding: "16px 14px calc(80px + env(safe-area-inset-bottom, 0px))",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <Link
-          to="/gyms"
-          style={{
-            color: "#fff",
-            textDecoration: "none",
-            width: 34,
-            height: 34,
-            borderRadius: 999,
-            display: "grid",
-            placeItems: "center",
-            background: "#1f1f1f",
-          }}
-          aria-label="Back"
-        >
-          ←
-        </Link>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ color: "#ff6f50", fontSize: 20, margin: 0, lineHeight: 1.2 }}>FITUP AR Tutorial</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 11, color: "#9ea3ab", fontWeight: 600 }}>
-            No QR needed. Camera detection + start button.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowSketchfabModel((prev) => !prev)}
-          style={{
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 10,
-            background: showSketchfabModel ? "#5b2aa8" : "#23262f",
-            color: "#fff",
-            fontWeight: 800,
-            fontSize: 12,
-            padding: "8px 10px",
-          }}
-        >
-          3D
-        </button>
-      </header>
-
       <div
         ref={cameraWrapRef}
         onClick={handleCameraWrapClick}
         style={{
           position: "relative",
-          borderRadius: 16,
+          width: "100%",
+          maxWidth: "100%",
+          height: "50vh",
           overflow: "hidden",
           background: "#0c0c0c",
-          border: "1px solid rgba(255,255,255,0.08)",
-          minHeight: 320,
         }}
       >
-        <video ref={videoRef} playsInline muted style={{ width: "100%", height: 320, objectFit: "cover", display: "block" }} />
-        <canvas ref={canvasRef} style={{ display: "none" }} />
-        <div
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          onLoadedMetadata={(event) => {
+            const video = event.currentTarget;
+            if (video.videoWidth && video.videoHeight) {
+              setCameraAspectRatio(video.videoWidth / video.videoHeight);
+            }
+          }}
           style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            border: "2px solid rgba(255,111,80,0.35)",
-            boxSizing: "border-box",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+            background: "#000",
+            transform: isCameraMirrored ? "scaleX(-1)" : "none",
           }}
         />
-        <div
+        <canvas ref={canvasRef} style={{ display: "none" }} />
+
+        <button
+          type="button"
+          onClick={handleStartDetection}
+          disabled={cameraState !== "ready" || detectState === "running"}
           style={{
             position: "absolute",
-            left: 10,
-            right: 10,
             top: 10,
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 10,
-            alignItems: "center",
+            left: 10,
+            border: "1px solid rgba(255,255,255,0.28)",
+            borderRadius: 999,
+            background: "rgba(20,20,20,0.75)",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "7px 12px",
+            opacity: cameraState !== "ready" || detectState === "running" ? 0.65 : 1,
           }}
         >
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              background: "rgba(0,0,0,0.55)",
-              padding: "6px 10px",
-              borderRadius: 999,
-            }}
-          >
-            {cameraState === "ready" ? "Camera Live" : cameraState === "error" ? "Camera blocked" : "Starting camera..."}
-          </span>
-          <button
-            type="button"
-            onClick={handleStartDetection}
-            disabled={cameraState !== "ready" || detectState === "running"}
-            style={{
-              padding: "8px 10px",
-              borderRadius: 10,
-              border: 0,
-              background: detectState === "running" ? "#3a3a3a" : "#ff6f50",
-              color: "#fff",
-              fontWeight: 700,
-              cursor: cameraState === "ready" && detectState !== "running" ? "pointer" : "default",
-            }}
-          >
-            {detectState === "running" ? "Detecting..." : "Start Detection"}
-          </button>
-        </div>
-        {cameraState === "ready" && (detectState === "ready" || activeTutorial)
-          ? [machine].map((machineId) => {
-              const anchor = anchorByMachine[machineId] || initialAnchorByMachine[machineId];
-              if (!anchor) return null;
-              return (
-                <div
-                  key={machineId}
-                  style={{
-                    position: "absolute",
-                    top: `${anchor.top}%`,
-                    left: `${anchor.left}%`,
-                    transform: "translate(-50%, -50%)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 6,
-                    pointerEvents: "none",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: "50%",
-                      background: "#ff6f50",
-                      boxShadow: "0 0 20px rgba(255,111,80,0.85)",
-                    }}
-                  />
-                  <div
-                    style={{
-                      color: "#fff",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background: "rgba(0,0,0,0.6)",
-                      padding: "5px 9px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,111,80,0.55)",
-                    }}
-                  >
-                    {prettyMachineName(machineId)}
-                  </div>
-                </div>
-              );
-            })
-          : null}
+          {detectionButtonLabel}
+        </button>
 
-        {cameraState === "ready" && activeTutorial
-          ? (tutorials[activeTutorial] || tutorials.chest_press).arrows.map((arrow, index) => {
-              const shiftedArrow = shiftToCurrentAnchor(activeTutorial, {
-                top: Number.parseFloat(arrow.top),
-                left: Number.parseFloat(arrow.left),
-              });
-              return (
-                <div
-                  key={`${activeTutorial}-arrow-${index}`}
-                  style={{
-                    position: "absolute",
-                    top: `${shiftedArrow.top}%`,
-                    left: `${shiftedArrow.left}%`,
-                    transform: "translate(-50%, -50%)",
-                    color: "#ffd166",
-                    fontSize: 24,
-                    fontWeight: 900,
-                    textShadow: "0 0 8px rgba(255,209,102,0.85)",
-                    opacity: 1 - index * 0.24,
-                    pointerEvents: "none",
-                  }}
-                >
-                  {arrow.symbol}
-                </div>
-              );
-            })
-          : null}
-
-        {cameraState === "ready" && activeTutorial && trackedBoxByMachine[activeTutorial]
-          ? (tutorials[activeTutorial] || tutorials.chest_press).hotspots.map((hotspot, index) => {
-              const anchor = anchorByMachine[activeTutorial] || initialAnchorByMachine[activeTutorial];
-              const box = trackedBoxByMachine[activeTutorial];
-              if (!anchor || !box) return null;
-              const left = anchor.left - box.width / 2 + box.width * hotspot.x;
-              const top = anchor.top - box.height / 2 + box.height * hotspot.y;
-              return (
-                <button
-                  key={`${activeTutorial}-hotspot-${index}`}
-                  type="button"
-                  style={{
-                    position: "absolute",
-                    left: `${left}%`,
-                    top: `${top}%`,
-                    transform: "translate(-50%, -50%)",
-                    pointerEvents: "none",
-                    border: "1px solid rgba(255,255,255,0.62)",
-                    borderRadius: 999,
-                    padding: "6px 12px",
-                    color: "#fff",
-                    fontWeight: 800,
-                    fontSize: 11,
-                    letterSpacing: 0.2,
-                    background:
-                      "linear-gradient(180deg, rgba(77,92,255,0.95) 0%, rgba(50,60,185,0.95) 100%)",
-                    boxShadow:
-                      "0 6px 16px rgba(20,24,80,0.45), inset 0 1px 2px rgba(255,255,255,0.28)",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {hotspot.label}
-                </button>
-              );
-            })
-          : null}
-
-        {cameraState === "ready" && activeTutorial && overlayVideoByMachine[activeTutorial] && isOverlayVisible
-          ? [activeTutorial].map((machineId) => {
-              const anchor = anchorByMachine[machineId] || initialAnchorByMachine[machineId];
-              if (!anchor) return null;
-              return (
-                <div
-                  key={`${machineId}-overlay-video`}
-                  style={{
-                    position: "absolute",
-                    top: `${anchor.top}%`,
-                    left: `${anchor.left}%`,
-                    transform: "translate(-50%, -50%)",
-                    width: 170,
-                    height: 240,
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.5)",
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
-                    opacity: overlayOpacity,
-                    pointerEvents: "auto",
-                    background: "rgba(0,0,0,0.25)",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setIsOverlayVisible(false)}
-                    style={{
-                      position: "absolute",
-                      top: 6,
-                      right: 6,
-                      zIndex: 2,
-                      width: 24,
-                      height: 24,
-                      borderRadius: 999,
-                      border: 0,
-                      background: "rgba(0,0,0,0.6)",
-                      color: "#fff",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                    aria-label="Close video model"
-                  >
-                    ✕
-                  </button>
-                  <video
-                    src={overlayVideoByMachine[machineId]}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      borderRadius: 12,
-                    }}
-                  />
-                </div>
-              );
-            })
-          : null}
-
-        {cameraState === "ready" && activeTutorial
-          ? (calloutLayoutByMachine[activeTutorial] || []).map((point, index) => {
-              const shiftedPoint = shiftToCurrentAnchor(activeTutorial, point);
-              return (
-                <div
-                  key={`${activeTutorial}-callout-${index}`}
-                  onClick={() => {
-                    if (isEditMode) setSelectedCalloutIndex(index);
-                  }}
-                  style={{
-                    position: "absolute",
-                    top: `${shiftedPoint.top}%`,
-                    left: `${shiftedPoint.left}%`,
-                    transform: "translate(-50%, -50%)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    background: "rgba(0,0,0,0.65)",
-                    color: "#fff",
-                    border: "1px solid rgba(255,209,102,0.55)",
-                    borderRadius: 999,
-                    padding: "5px 8px",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    maxWidth: 170,
-                    pointerEvents: isEditMode ? "auto" : "none",
-                    boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
-                    cursor: isEditMode ? "pointer" : "default",
-                    borderColor:
-                      isEditMode && selectedCalloutIndex === index
-                        ? "rgba(62, 207, 142, 0.95)"
-                        : "rgba(255,209,102,0.55)",
-                  }}
-                >
-                  <span style={{ color: "#ffd166", fontSize: 12 }}>•</span>
-                  <span>{point.text}</span>
-                </div>
-              );
-            })
-          : null}
-
-        {showSketchfabModel ? (
-          <div
-            style={{
-              position: "absolute",
-              inset: 8,
-              borderRadius: 12,
-              overflow: "hidden",
-              border: "1px solid rgba(255,255,255,0.2)",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
-              zIndex: 5,
-              background: "#0b0f18",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setShowSketchfabModel(false)}
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                zIndex: 6,
-                border: 0,
-                borderRadius: 999,
-                width: 28,
-                height: 28,
-                background: "rgba(0,0,0,0.65)",
-                color: "#fff",
-                fontWeight: 800,
-              }}
-              aria-label="Close 3D model"
-            >
-              ✕
-            </button>
-            <iframe
-              title="20. Barbell Bench Press"
-              src={SKETCHFAB_EMBED_URL}
-              allow="autoplay; fullscreen; xr-spatial-tracking"
-              style={{
-                width: "100%",
-                height: "100%",
-                border: 0,
-                background: "#000",
-              }}
-            />
-          </div>
-        ) : null}
-      </div>
-
-      <section
-        style={{
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "16px",
-          padding: "14px",
-          background: "#1a1a1a",
-          marginTop: 12,
-        }}
-      >
-        <p style={{ margin: "0 0 10px", color: "#d8dbe0", fontSize: 13 }}>{detectMessage}</p>
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-          <button
-            type="button"
-            onClick={() => {
-              setManualMode((prev) => !prev);
-              setDetectMessage(
-                !manualMode
-                  ? "Manual mode enabled. Select a machine button and show AR demo."
-                  : "Auto detection mode enabled. Tap Start Detection.",
-              );
-            }}
-            style={{
-              padding: "9px 12px",
-              borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: manualMode ? "#3158c9" : "#202020",
-              color: "#fff",
-              fontWeight: 700,
-            }}
-          >
-            {manualMode ? "Manual Mode On" : "Manual Mode Off"}
-          </button>
-        </div>
-
-        {manualMode ? (
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-            <button
-              type="button"
-              onClick={() => openMachineGuide("chest_press")}
-              style={{
-                border: "1px solid rgba(255,255,255,0.45)",
-                borderRadius: 14,
-                padding: "10px 14px",
-                background: "linear-gradient(180deg, #6b7cff 0%, #3d4ecb 100%)",
-                color: "#fff",
-                fontWeight: 800,
-                boxShadow: "0 8px 18px rgba(18,28,97,0.45)",
-              }}
-            >
-              3D Chest Press
-            </button>
-            <button
-              type="button"
-              onClick={() => openMachineGuide("treadmill")}
-              style={{
-                border: "1px solid rgba(255,255,255,0.45)",
-                borderRadius: 14,
-                padding: "10px 14px",
-                background: "linear-gradient(180deg, #6b7cff 0%, #3d4ecb 100%)",
-                color: "#fff",
-                fontWeight: 800,
-                boxShadow: "0 8px 18px rgba(18,28,97,0.45)",
-              }}
-            >
-              3D Treadmill
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (machine) openMachineGuide(machine);
-              }}
-              style={{
-                border: "1px solid rgba(255,255,255,0.35)",
-                borderRadius: 14,
-                padding: "10px 14px",
-                background: "linear-gradient(180deg, #37b36b 0%, #21864f 100%)",
-                color: "#fff",
-                fontWeight: 800,
-                boxShadow: "0 8px 18px rgba(18,97,48,0.4)",
-              }}
-            >
-              Show AR Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowSketchfabModel((prev) => !prev)}
-              style={{
-                border: "1px solid rgba(255,255,255,0.35)",
-                borderRadius: 14,
-                padding: "10px 14px",
-                background: "linear-gradient(180deg, #8f4df0 0%, #5b2aa8 100%)",
-                color: "#fff",
-                fontWeight: 800,
-                boxShadow: "0 8px 18px rgba(70,34,125,0.45)",
-              }}
-            >
-              {showSketchfabModel ? "Hide 3D Model" : "Show 3D Model"}
-            </button>
-          </div>
-        ) : null}
-
-        {detectState === "ready" ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={() => openMachineGuide(machine)}
-              style={{
-                padding: "9px 12px",
-                borderRadius: 10,
-                border: 0,
-                background: "#3fb950",
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            >
-              Start Guide: {prettyMachineName(machine)}
-            </button>
-            <button
-              type="button"
-              onClick={() => openMachineGuide("chest_press")}
-              style={{
-                padding: "9px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "#202020",
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            >
-              Chest Press Video
-            </button>
-            <button
-              type="button"
-              onClick={() => openMachineGuide("treadmill")}
-              style={{
-                padding: "9px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "#202020",
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            >
-              Treadmill Video
-            </button>
-            <label
-              style={{
-                padding: "9px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "#222",
-                color: "#fff",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              Upload Demo Video
-              <input type="file" accept="video/*" onChange={handleOverlayVideoUpload} style={{ display: "none" }} />
-            </label>
-            {!isOverlayVisible && activeTutorial && overlayVideoByMachine[activeTutorial] ? (
-              <button
-                type="button"
-                onClick={() => setIsOverlayVisible(true)}
-                style={{
-                  padding: "9px 12px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  background: "#234b33",
-                  color: "#fff",
-                  fontWeight: 700,
-                }}
-              >
-                Show Video Model
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setIsEditMode((prev) => !prev)}
-              style={{
-                padding: "9px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: isEditMode ? "#1f5a3d" : "#202020",
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            >
-              {isEditMode ? "Done Positioning" : "Edit Point Positions"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsReanchorMode((prev) => !prev);
-                setDetectMessage("Tap on the machine in camera view to re-anchor all points.");
-              }}
-              style={{
-                padding: "9px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: isReanchorMode ? "#1f5a3d" : "#202020",
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            >
-              {isReanchorMode ? "Cancel Re-anchor" : "Re-anchor To Machine"}
-            </button>
-          </div>
-        ) : null}
-
-        {isEditMode && activeTutorial ? (
-          <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 10 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#d8dbe0" }}>
-              Select a point, then move it to match machine parts.
-            </p>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-              {(calloutLayoutByMachine[activeTutorial] || []).map((point, index) => (
-                <button
-                  key={`edit-point-${index}`}
-                  type="button"
-                  onClick={() => setSelectedCalloutIndex(index)}
-                  style={{
-                    padding: "6px 8px",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    background: selectedCalloutIndex === index ? "#2b6f4e" : "#202020",
-                    color: "#fff",
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                >
-                  {index + 1}. {point.text}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => nudgeSelectedCallout("top", -1.2)} style={{ padding: "7px 10px", borderRadius: 8, border: 0, background: "#2a2a2a", color: "#fff" }}>Up</button>
-              <button type="button" onClick={() => nudgeSelectedCallout("top", 1.2)} style={{ padding: "7px 10px", borderRadius: 8, border: 0, background: "#2a2a2a", color: "#fff" }}>Down</button>
-              <button type="button" onClick={() => nudgeSelectedCallout("left", -1.2)} style={{ padding: "7px 10px", borderRadius: 8, border: 0, background: "#2a2a2a", color: "#fff" }}>Left</button>
-              <button type="button" onClick={() => nudgeSelectedCallout("left", 1.2)} style={{ padding: "7px 10px", borderRadius: 8, border: 0, background: "#2a2a2a", color: "#fff" }}>Right</button>
-              <button type="button" onClick={resetCalloutsForMachine} style={{ padding: "7px 10px", borderRadius: 8, border: 0, background: "#612b2b", color: "#fff" }}>Reset</button>
-            </div>
-          </div>
-        ) : null}
-
-        {activeTutorial && overlayVideoByMachine[activeTutorial] ? (
-          <div style={{ marginTop: 10 }}>
-            <label style={{ display: "block", color: "#d8dbe0", fontSize: 12, marginBottom: 6 }}>
-              Video Overlay Opacity: {Math.round(overlayOpacity * 100)}%
-            </label>
-            <input
-              type="range"
-              min="0.2"
-              max="1"
-              step="0.05"
-              value={overlayOpacity}
-              onChange={(e) => setOverlayOpacity(Number(e.target.value))}
-              style={{ width: "100%" }}
-            />
-          </div>
-        ) : null}
-      </section>
-
-      {activeTutorial ? (
-        <section
+        <button
+          type="button"
+          onClick={() => setShowTipsOverlay((prev) => !prev)}
           style={{
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "16px",
-            padding: "14px",
-            background: "#1a1a1a",
-            marginTop: 12,
+            position: "absolute",
+            top: 10,
+            right: 10,
+            border: "1px solid rgba(255,255,255,0.28)",
+            borderRadius: 999,
+            background: "rgba(20,20,20,0.75)",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "7px 12px",
           }}
         >
-          <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
-            {(tutorials[activeTutorial] || tutorials.chest_press).title} (AR Guide)
-          </h2>
-          {(tutorials[activeTutorial] || tutorials.chest_press).steps.map((step, index) => (
-            <p key={index} style={{ margin: "0 0 8px", color: "#d8dbe0", fontSize: 13 }}>
-              👉 {step}
-            </p>
-          ))}
-        </section>
-      ) : (
-        <p style={{ marginTop: 10, color: "#9ea3ab", fontSize: 12 }}>
-          Point to a machine, tap Start Detection, then Start Guide.
-        </p>
-      )}
+          {showTipsOverlay ? "Hide Tips" : "Show Tips"}
+        </button>
 
-      {cameraState === "error" ? (
-        <p style={{ marginTop: 10, color: "#ffb39f", fontSize: 12 }}>
-          Camera access failed. Allow camera permission in browser/app settings.
-        </p>
-      ) : null}
+        <button
+          type="button"
+          onClick={handleExitAr}
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 110,
+            border: 0,
+            borderRadius: 999,
+            background: "#ff6f50",
+            color: "#ffffff",
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "7px 12px",
+            minHeight: 34,
+            boxShadow: "0 6px 14px rgba(0,0,0,0.28)",
+          }}
+        >
+          Exit AR
+        </button>
+
+        <button
+          type="button"
+          onClick={handleFlipCamera}
+          style={{
+            position: "absolute",
+            right: 10,
+            bottom: 10,
+            border: "1px solid rgba(255,255,255,0.28)",
+            borderRadius: 999,
+            background: "rgba(20,20,20,0.75)",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "7px 12px",
+          }}
+        >
+          Mirror
+        </button>
+
+        {showTipsOverlay && cameraState === "ready" && activeTutorial
+          ? (() => {
+              const assignedTip = (tutorials[activeTutorial]?.tips || []).find((tip) => tip.trackHotspot);
+              if (!assignedTip) return null;
+
+              const hotspotPos = getTrackedHotspotPosition(activeTutorial, assignedTip.trackHotspot);
+              if (!hotspotPos) return null;
+
+              const quality = trackingQualityByMachine[activeTutorial] || "fair";
+              const qualityColor =
+                quality === "good" ? "rgba(63,185,80,0.95)" : quality === "fair" ? "rgba(255,193,79,0.95)" : "rgba(255,111,80,0.95)";
+              const placeRight = hotspotPos.left < 52;
+              const cardLeft = Math.max(8, Math.min(92, hotspotPos.left + (placeRight ? 12 : -12)));
+              const cardTop = Math.max(12, Math.min(88, hotspotPos.top - 2));
+
+              return (
+                <div
+                  key={`${activeTutorial}-tracked-tip`}
+                  style={{
+                    position: "absolute",
+                    left: `${cardLeft}%`,
+                    top: `${cardTop}%`,
+                    transform: `translate(${placeRight ? 0 : -100}%, -50%)`,
+                    width: 220,
+                    maxWidth: "58vw",
+                    pointerEvents: "none",
+                    background: "rgba(8,10,16,0.85)",
+                    border: `1px solid ${qualityColor}`,
+                    borderRadius: 12,
+                    padding: "8px 10px",
+                    boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <strong style={{ fontSize: 12, color: "#fff" }}>{assignedTip.title}</strong>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        color: "#10161f",
+                        background: qualityColor,
+                        borderRadius: 999,
+                        padding: "2px 7px",
+                      }}
+                    >
+                      {quality}
+                    </span>
+                  </div>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 16, color: "#e7e9ed", fontSize: 11, lineHeight: 1.35 }}>
+                    {(assignedTip.points || []).slice(0, 3).map((point) => (
+                      <li key={point}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()
+          : null}
+
+      </div>
+      <div style={{ flex: 1, background: "#000" }} />
     </main>
   );
 }

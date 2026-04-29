@@ -1,0 +1,21 @@
+{
+  "settings_version": "0.0.6",
+  "datasets_dir": "/Users/jojogaber123gmail.com/Desktop/fitup-app/my-app/datasets",
+  "weights_dir": "/Users/jojogaber123gmail.com/Desktop/fitup-app/my-app/weights",
+  "runs_dir": "/Users/jojogaber123gmail.com/Desktop/fitup-app/my-app/runs",
+  "uuid": "51c3bd96ad082a5266840666a936121a3b24f8519834f83bf73b963819450c6a",
+  "sync": true,
+  "api_key": "",
+  "openai_api_key": "",
+  "clearml": true,
+  "comet": true,
+  "dvc": true,
+  "hub": true,
+  "mlflow": true,
+  "neptune": true,
+  "raytune": true,
+  "tensorboard": false,
+  "wandb": false,
+  "vscode_msg": true,
+  "openvino_msg": true
+}

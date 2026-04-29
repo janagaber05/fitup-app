@@ -19,10 +19,10 @@ export async function detectWithYoloServer(canvas) {
     if (!response.ok) return null;
     const payload = await response.json();
     const list = Array.isArray(payload?.predictions) ? payload.predictions : [];
-    if (!list.length) return null;
-    return list[0];
+    if (!list.length) return [];
+    return list;
   } catch {
-    return null;
+    return [];
   }
 }
 
