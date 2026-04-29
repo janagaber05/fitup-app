@@ -42,23 +42,57 @@ class PredictBody(BaseModel):
 
 
 _model = None
+_resolved_model_path = None
+
+
+def resolve_model_path() -> Path:
+    env_path = os.environ.get("YOLO_MODEL_PATH", "").strip()
+    if env_path:
+        candidate = Path(env_path).expanduser()
+        if not candidate.is_absolute():
+            candidate = ROOT / candidate
+        if candidate.exists():
+            return candidate
+        raise RuntimeError(f"Model not found at YOLO_MODEL_PATH: {candidate}")
+
+    if DEFAULT_MODEL.exists():
+        return DEFAULT_MODEL
+
+    # Fallback: auto-discover any .pt inside the project.
+    candidates = sorted(
+        (p for p in ROOT.rglob("*.pt") if p.is_file()),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if candidates:
+        return candidates[0]
+
+    raise RuntimeError(
+        "No YOLO .pt model found. Place one under my-app/public (e.g. public/model ai/best (5).pt) "
+        "or set YOLO_MODEL_PATH."
+    )
 
 
 def get_model():
-    global _model
+    global _model, _resolved_model_path
     if _model is None:
         from ultralytics import YOLO
 
-        path = os.environ.get("YOLO_MODEL_PATH", str(DEFAULT_MODEL))
-        if not Path(path).exists():
-            raise RuntimeError(f"Model not found: {path}")
-        _model = YOLO(path)
+        model_path = resolve_model_path()
+        _resolved_model_path = model_path
+        _model = YOLO(str(model_path))
     return _model
 
 
 @app.get("/health")
 def health():
-    return {"ok": True, "model_path": os.environ.get("YOLO_MODEL_PATH", str(DEFAULT_MODEL))}
+    model_path = _resolved_model_path
+    if model_path is None:
+        try:
+            model_path = resolve_model_path()
+        except Exception:
+            model_path = os.environ.get("YOLO_MODEL_PATH", str(DEFAULT_MODEL))
+    return {"ok": True, "model_path": str(model_path)}
 
 
 @app.post("/predict")
