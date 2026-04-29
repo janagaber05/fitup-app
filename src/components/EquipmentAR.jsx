@@ -881,11 +881,9 @@ export default function EquipmentAR() {
   return (
     <main
       style={{
-        minHeight: "100vh",
+        height: "100dvh",
         background: "#000",
         color: "white",
-        display: "flex",
-        flexDirection: "column",
       }}
     >
       <div
@@ -895,8 +893,7 @@ export default function EquipmentAR() {
           position: "relative",
           width: "100%",
           maxWidth: "100%",
-          flex: 1,
-          minHeight: 0,
+          height: "100%",
           overflow: "hidden",
           background: "#0c0c0c",
         }}
