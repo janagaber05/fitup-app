@@ -20,8 +20,8 @@ const YOLO_CLASS_SLUGS = [
   "smith_machine",
 ];
 const MACHINE_ALLOWED_FOR_DETECTION = new Set([...MACHINE_IDS, ...YOLO_CLASS_SLUGS]);
-const DETECTION_THRESHOLD = 0.82;
-const YOLO_CONFIDENCE_THRESHOLD = 0.45;
+const DETECTION_THRESHOLD = 0.75;
+const YOLO_CONFIDENCE_THRESHOLD = 0.32;
 const MIN_BOX_PERCENT = 12;
 const MODEL_BASE_URL = (process.env.REACT_APP_TM_MODEL_URL || "").trim();
 const ROBOFLOW_WORKFLOW_URL = (process.env.REACT_APP_ROBOFLOW_WORKFLOW_URL || "").trim();
@@ -592,10 +592,14 @@ export default function EquipmentAR() {
     let candidateId = null;
     let candidateCount = 0;
     let candidateBest = null;
+    let bestOverall = null;
     for (let i = 0; i < 12; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       const sample = await detectMachineFromFrame();
       if (sample?.machineId && MACHINE_ALLOWED_FOR_DETECTION.has(sample.machineId)) {
+        if (Number(sample.confidence || 0) > Number(bestOverall?.confidence || 0)) {
+          bestOverall = sample;
+        }
         if (sample.machineId !== candidateId) {
           candidateId = sample.machineId;
           candidateCount = 1;
@@ -614,6 +618,9 @@ export default function EquipmentAR() {
       // Small delay between frame checks
       // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => setTimeout(resolve, 180));
+    }
+    if (!found && bestOverall && Number(bestOverall.confidence || 0) >= YOLO_CONFIDENCE_THRESHOLD) {
+      found = bestOverall;
     }
 
     if (found?.machineId && MACHINE_ALLOWED_FOR_DETECTION.has(found.machineId)) {
