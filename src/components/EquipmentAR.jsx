@@ -28,6 +28,8 @@ const DEFAULT_ROBOFLOW_WORKFLOW_URL = "https://serverless.roboflow.com/janas-wor
 const DEFAULT_ROBOFLOW_API_KEY = "qrRTvZ4S8QwA65qhYCvO";
 const ROBOFLOW_WORKFLOW_URL = (process.env.REACT_APP_ROBOFLOW_WORKFLOW_URL || DEFAULT_ROBOFLOW_WORKFLOW_URL).trim();
 const ROBOFLOW_API_KEY = (process.env.REACT_APP_ROBOFLOW_API_KEY || DEFAULT_ROBOFLOW_API_KEY).trim();
+const DETECTOR_MODE = (process.env.REACT_APP_DETECTOR_MODE || "").trim().toLowerCase();
+const FORCE_TENSORFLOW_DETECTOR = DETECTOR_MODE === "tensorflow";
 const SKETCHFAB_EMBED_URL = "https://sketchfab.com/models/d862a67af82d43ecaabec2d638c9e2b5/embed";
 const MACHINE_LABEL_ALIASES = {
   chest_press: "chest_press",
@@ -496,7 +498,7 @@ export default function EquipmentAR() {
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, width, height);
 
-    if (isYoloServerConfigured()) {
+    if (!FORCE_TENSORFLOW_DETECTOR && isYoloServerConfigured()) {
       const predictions = await detectWithYoloServer(canvas);
       if (Array.isArray(predictions) && predictions.length) {
         const supported = predictions
@@ -538,7 +540,7 @@ export default function EquipmentAR() {
       }
     }
 
-    if (ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY) {
+    if (!FORCE_TENSORFLOW_DETECTOR && ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY) {
       const workflowDetection = await detectMachineFromRoboflow(canvas);
       if (!workflowDetection) return null;
       const normalizedLeft = Math.min(95, Math.max(5, (workflowDetection.anchor.left / width) * 100));
@@ -583,6 +585,11 @@ export default function EquipmentAR() {
       setDetectMessage(
         "No detector configured. Set REACT_APP_YOLO_API_URL (local YOLO server), or Roboflow / Teachable Machine env vars, then restart.",
       );
+      return;
+    }
+    if (FORCE_TENSORFLOW_DETECTOR && !MODEL_BASE_URL) {
+      setDetectState("error");
+      setDetectMessage("TensorFlow mode is on, but REACT_APP_TM_MODEL_URL is missing.");
       return;
     }
 
@@ -775,8 +782,9 @@ export default function EquipmentAR() {
 
   useEffect(() => {
     if (detectState !== "ready") return undefined;
-    const hasAnyDetector =
-      isYoloServerConfigured() || (ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY) || Boolean(MODEL_BASE_URL);
+    const hasAnyDetector = FORCE_TENSORFLOW_DETECTOR
+      ? Boolean(MODEL_BASE_URL)
+      : isYoloServerConfigured() || (ROBOFLOW_WORKFLOW_URL && ROBOFLOW_API_KEY) || Boolean(MODEL_BASE_URL);
     if (!hasAnyDetector) return undefined;
     let cancelled = false;
     const interval = setInterval(async () => {
