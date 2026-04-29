@@ -19,7 +19,6 @@
 
 # Large YOLO weights (keep locally; avoid bloating git)
 public/model ai/*.pt
-!public/model ai/best (5).pt
 .env.test.local
 .env.production.local
 
