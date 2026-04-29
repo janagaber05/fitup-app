@@ -895,7 +895,8 @@ export default function EquipmentAR() {
           position: "relative",
           width: "100%",
           maxWidth: "100%",
-          height: "50vh",
+          flex: 1,
+          minHeight: 0,
           overflow: "hidden",
           background: "#0c0c0c",
         }}
@@ -910,14 +911,7 @@ export default function EquipmentAR() {
               setCameraAspectRatio(video.videoWidth / video.videoHeight);
             }
           }}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-            background: "#000",
-            transform: isCameraMirrored ? "scaleX(-1)" : "none",
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: isCameraMirrored ? "scaleX(-1)" : "none" }}
         />
         <canvas ref={canvasRef} style={{ display: "none" }} />
 
@@ -1061,7 +1055,6 @@ export default function EquipmentAR() {
           : null}
 
       </div>
-      <div style={{ flex: 1, background: "#000" }} />
     </main>
   );
 }
