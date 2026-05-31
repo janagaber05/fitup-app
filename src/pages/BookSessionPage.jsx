@@ -1,12 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
+import {
+  addBooking,
+  buildBookingRef,
+  cancelBooking,
+  findBookingConflict,
+  formatBookingConflictMessage,
+  loadActiveBookings,
+  mapKindToType,
+} from "../data/bookings";
+import {
+  getClassSpotsRemaining,
+  releaseClassSpot,
+  reserveClassSpot,
+} from "../data/classSpots";
+import { GYM_COACHES } from "../data/gymCoaches";
 import "./BookSessionPage.css";
 
 const MAIN_TABS = [
   { id: "classes", label: "Classes" },
   { id: "wellness", label: "Wellness" },
   { id: "private", label: "Private" },
+  { id: "bookings", label: "My Bookings" },
 ];
 
 const CATEGORY_CHIPS = [
@@ -36,7 +52,7 @@ const SESSIONS = [
     category: "yoga",
     name: "Morning Flow Yoga",
     time: "07:00 AM",
-    instructor: "Elena Ray",
+    instructor: "Maya Patel",
     duration: "60 min",
     room: "Studio A",
     spots: 5,
@@ -72,7 +88,7 @@ const SESSIONS = [
     category: "cardio",
     name: "Spin & Core",
     time: "12:15 PM",
-    instructor: "Ava Rivera",
+    instructor: "Sarah Connor",
     duration: "50 min",
     room: "Cycle Room",
     spots: 2,
@@ -113,45 +129,6 @@ const PRIVATE_SERVICES = [
     description:
       "Targeted soft-tissue work with our therapists. Complimentary 15-minute slots on select days.",
     icon: "pulse",
-  },
-];
-
-const COACHES = [
-  {
-    id: "c1",
-    name: "Nina Carter",
-    specialty: "Strength & Conditioning",
-    rating: 4.9,
-    price: 80,
-    image:
-      "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: "c2",
-    name: "Elena Ray",
-    specialty: "Yoga & Mobility",
-    rating: 4.8,
-    price: 65,
-    image:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: "c3",
-    name: "Nora Blake",
-    specialty: "HIIT & MetCon",
-    rating: 5.0,
-    price: 75,
-    image:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: "c4",
-    name: "Layla Hassan",
-    specialty: "Olympic Lifting",
-    rating: 4.7,
-    price: 90,
-    image:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
   },
 ];
 
@@ -221,33 +198,54 @@ function CoachStars() {
 function BookSessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [mainTab, setMainTab] = useState("private");
+  const [mainTab, setMainTab] = useState(() => location.state?.mainTab || "private");
   const [dateId, setDateId] = useState("thu12");
   const [category, setCategory] = useState("all");
   const [bookingDetails, setBookingDetails] = useState(null);
   const [bookingConfirmation, setBookingConfirmation] = useState(null);
   const [selectedBookingSlot, setSelectedBookingSlot] = useState("");
   const [bookingNotice, setBookingNotice] = useState("");
+  const [activeBookings, setActiveBookings] = useState(() => loadActiveBookings());
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [spotVersion, setSpotVersion] = useState(0);
+
+  const refreshBookings = () => setActiveBookings(loadActiveBookings());
+  const refreshSpots = () => setSpotVersion((v) => v + 1);
 
   const filtered = useMemo(() => {
     if (mainTab !== "classes") return [];
-    if (category === "all") return SESSIONS;
-    return SESSIONS.filter((s) => s.category === category);
-  }, [mainTab, category]);
+    const list = category === "all" ? SESSIONS : SESSIONS.filter((s) => s.category === category);
+    return list.map((session) => ({
+      ...session,
+      maxSpots: session.spots,
+      spots: getClassSpotsRemaining(session.id, dateId, session.spots),
+    }));
+  }, [mainTab, category, dateId, spotVersion]);
 
   const showDates = mainTab === "classes" || mainTab === "wellness" || mainTab === "private";
 
   useEffect(() => {
     if (!location.state?.bookingPaymentNotice) return;
+    refreshBookings();
     setBookingNotice(location.state.bookingPaymentNotice);
+    setMainTab("bookings");
     navigate("/book", { replace: true });
   }, [location.state, navigate]);
 
   useEffect(() => {
-    if (!bookingDetails && !bookingConfirmation) return undefined;
+    if (!location.state?.mainTab) return;
+    navigate("/book", { replace: true, state: {} });
+  }, [location.state, navigate]);
+
+  useEffect(() => {
+    if (!bookingDetails && !bookingConfirmation && !cancelTarget) return undefined;
     const prev = document.body.style.overflow;
     const onKey = (e) => {
       if (e.key !== "Escape") return;
+      if (cancelTarget) {
+        setCancelTarget(null);
+        return;
+      }
       if (bookingConfirmation) {
         setBookingConfirmation(null);
         return;
@@ -260,11 +258,18 @@ function BookSessionPage() {
       document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKey);
     };
-  }, [bookingDetails, bookingConfirmation]);
+  }, [bookingDetails, bookingConfirmation, cancelTarget]);
 
   const openClassDetails = (s) => {
+    if (s.spots <= 0) {
+      setBookingNotice(`${s.name} is full for this date. Try another class or date.`);
+      return;
+    }
     setBookingDetails({
       kind: "Class",
+      sessionId: s.id,
+      classDateId: dateId,
+      maxSpots: s.maxSpots,
       title: s.name,
       subtitle: `Coach ${s.instructor}`,
       priceLabel: "Included in membership",
@@ -282,6 +287,7 @@ function BookSessionPage() {
   const openCoachDetails = (c) => {
     setBookingDetails({
       kind: "Personal Training",
+      coachId: c.id,
       title: c.name,
       subtitle: c.specialty,
       priceLabel: `$${c.price}/session`,
@@ -317,43 +323,111 @@ function BookSessionPage() {
     if (!bookingDetails) return;
     const selectedDate = DATES.find((d) => d.id === dateId);
     const dateLabel = selectedDate ? `${selectedDate.day} ${selectedDate.num}` : "Selected day";
-    const bookingRef = `BK-${Date.now().toString().slice(-6)}`;
+    const bookingRef = buildBookingRef();
     const chosenTime = selectedBookingSlot || bookingDetails.when;
     const isPaidBooking =
       bookingDetails.priceLabel.startsWith("$") &&
       bookingDetails.priceLabel !== "$Free" &&
       bookingDetails.priceLabel !== "Included in membership";
 
+    const bookingPayload = {
+      kind: bookingDetails.kind,
+      type: mapKindToType(bookingDetails.kind),
+      title: bookingDetails.title,
+      subtitle: bookingDetails.subtitle,
+      priceLabel: bookingDetails.priceLabel,
+      dateLabel,
+      when: chosenTime,
+      duration: bookingDetails.duration,
+      location: bookingDetails.location,
+      bookingRef,
+    };
+
+    const conflict = findBookingConflict(dateLabel, chosenTime);
+    if (conflict) {
+      setBookingNotice(formatBookingConflictMessage(conflict, dateLabel, chosenTime));
+      return;
+    }
+
+    const isClassBooking = bookingDetails.kind === "Class" && bookingDetails.sessionId;
+    if (isClassBooking) {
+      const reserved = reserveClassSpot(
+        bookingDetails.sessionId,
+        bookingDetails.classDateId || dateId,
+        bookingDetails.maxSpots,
+      );
+      if (!reserved) {
+        setBookingNotice("This class is full. No spots left for the selected date.");
+        refreshSpots();
+        return;
+      }
+      bookingPayload.sessionId = bookingDetails.sessionId;
+      bookingPayload.classDateId = bookingDetails.classDateId || dateId;
+      bookingPayload.maxSpots = bookingDetails.maxSpots;
+    }
+
     if (isPaidBooking) {
       navigate("/membership/payment", {
         state: {
           paymentMode: "booking",
-          booking: {
-            bookingRef,
-            title: bookingDetails.title,
-            subtitle: bookingDetails.subtitle,
-            priceLabel: bookingDetails.priceLabel,
-            dateLabel,
-            timeLabel: chosenTime,
-            location: bookingDetails.location,
-            kind: bookingDetails.kind,
-          },
+          booking: bookingPayload,
         },
       });
       setBookingDetails(null);
       return;
     }
 
+    const saved = addBooking(bookingPayload);
+    if (!saved) {
+      if (isClassBooking) {
+        releaseClassSpot(
+          bookingDetails.sessionId,
+          bookingDetails.classDateId || dateId,
+          bookingDetails.maxSpots,
+        );
+        refreshSpots();
+      }
+      setBookingNotice(formatBookingConflictMessage({ title: bookingDetails.title }, dateLabel, chosenTime));
+      return;
+    }
+    refreshBookings();
+    refreshSpots();
     setBookingConfirmation({
       ...bookingDetails,
+      ...saved,
       dateLabel,
       bookingRef,
-      confirmedAt: new Date().toLocaleString(),
+      confirmedAt: saved.confirmedAt,
       status: "Confirmed",
       when: chosenTime,
     });
     setBookingNotice(`${bookingDetails.title} booked successfully.`);
+    setMainTab("bookings");
     setBookingDetails(null);
+  };
+
+  const confirmCancelBooking = () => {
+    if (!cancelTarget) return;
+    cancelBooking(cancelTarget.id);
+    if (cancelTarget.type === "class" && cancelTarget.sessionId && cancelTarget.classDateId) {
+      const maxSpots =
+        cancelTarget.maxSpots ??
+        SESSIONS.find((session) => session.id === cancelTarget.sessionId)?.spots ??
+        0;
+      releaseClassSpot(cancelTarget.sessionId, cancelTarget.classDateId, maxSpots);
+      refreshSpots();
+    }
+    refreshBookings();
+    setCancelTarget(null);
+    setBookingNotice(`${cancelTarget.title} booking cancelled.`);
+  };
+
+  const bookingTypeLabel = (type) => {
+    if (type === "class") return "Class";
+    if (type === "wellness") return "Wellness";
+    if (type === "private") return "Private Session";
+    if (type === "program") return "Program";
+    return "Booking";
   };
 
   return (
@@ -437,7 +511,9 @@ function BookSessionPage() {
                         loading="lazy"
                       />
                       <div className="book-card-visual-overlay" aria-hidden="true" />
-                      <span className="book-spots-badge">{s.spots} spots left</span>
+                      <span className={`book-spots-badge${s.spots <= 0 ? " book-spots-badge--full" : ""}`}>
+                        {s.spots <= 0 ? "Full" : `${s.spots} spots left`}
+                      </span>
                     </div>
                     <div className="book-card-body">
                       <div className="book-card-topline">
@@ -486,8 +562,13 @@ function BookSessionPage() {
                             {s.room}
                           </span>
                         </div>
-                        <button type="button" className="book-btn-small" onClick={() => openClassDetails(s)}>
-                          Book
+                        <button
+                          type="button"
+                          className="book-btn-small"
+                          disabled={s.spots <= 0}
+                          onClick={() => openClassDetails(s)}
+                        >
+                          {s.spots <= 0 ? "Full" : "Book"}
                         </button>
                       </div>
                     </div>
@@ -504,7 +585,7 @@ function BookSessionPage() {
               Available Coaches
             </h2>
             <ul className="book-coach-list">
-              {COACHES.map((c) => (
+              {GYM_COACHES.map((c) => (
                 <li key={c.id}>
                   <button type="button" className="book-coach-card" onClick={() => openCoachDetails(c)}>
                     <img className="coach-avatar" src={c.image} alt="" loading="lazy" />
@@ -571,6 +652,39 @@ function BookSessionPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {mainTab === "bookings" && (
+          <section className="book-my-bookings" aria-label="My bookings">
+            {activeBookings.length === 0 ? (
+              <p className="book-empty">
+                No active bookings yet.
+                <span className="book-empty-sub">Book a class, wellness service, or private session to see it here.</span>
+              </p>
+            ) : (
+              <ul className="book-my-list">
+                {activeBookings.map((b) => (
+                  <li key={b.id}>
+                    <article className="book-my-card">
+                      <div className="book-my-card-top">
+                        <span className="book-my-type">{bookingTypeLabel(b.type)}</span>
+                        <span className="book-my-ref">{b.bookingRef}</span>
+                      </div>
+                      <h2 className="book-my-title">{b.title}</h2>
+                      <p className="book-my-sub">{b.subtitle}</p>
+                      <div className="book-my-meta">
+                        <span>{b.dateLabel} · {b.when}</span>
+                        <span>{b.location}</span>
+                      </div>
+                      <button type="button" className="book-my-cancel" onClick={() => setCancelTarget(b)}>
+                        Cancel Booking
+                      </button>
+                    </article>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         )}
         {bookingNotice ? <p className="book-notice">{bookingNotice}</p> : null}
       </div>
@@ -656,6 +770,35 @@ function BookSessionPage() {
             <button type="button" className="book-confirm-done" onClick={() => setBookingConfirmation(null)}>
               Done
             </button>
+          </div>
+        </div>
+      ) : null}
+      {cancelTarget ? (
+        <div className="book-confirm-wrap" role="presentation">
+          <button
+            type="button"
+            className="book-confirm-backdrop"
+            aria-label="Close cancel confirmation"
+            onClick={() => setCancelTarget(null)}
+          />
+          <div className="book-confirm-modal" role="dialog" aria-modal="true" aria-label="Cancel booking">
+            <header className="book-confirm-head">
+              <h2>Cancel Booking</h2>
+              <button type="button" className="book-confirm-close" onClick={() => setCancelTarget(null)} aria-label="Close">
+                ✕
+              </button>
+            </header>
+            <p className="book-confirm-ok">
+              Cancel <strong>{cancelTarget.title}</strong> on {cancelTarget.dateLabel} at {cancelTarget.when}?
+            </p>
+            <div className="book-detail-actions">
+              <button type="button" className="book-detail-cancel" onClick={() => setCancelTarget(null)}>
+                Keep Booking
+              </button>
+              <button type="button" className="book-detail-confirm book-detail-confirm--danger" onClick={confirmCancelBooking}>
+                Yes, Cancel
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

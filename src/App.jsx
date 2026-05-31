@@ -20,6 +20,7 @@ import AnnouncementsPage from "./pages/AnnouncementsPage";
 import ProgressTrackingPage from "./pages/ProgressTrackingPage";
 import BookSessionPage from "./pages/BookSessionPage";
 import EmsTrainingPage from "./pages/EmsTrainingPage";
+import CoachProfilePage from "./pages/CoachProfilePage";
 import EquipmentAR from "./components/EquipmentAR";
 import "./App.css";
 
@@ -94,6 +95,7 @@ function App() {
           <Route path="/gyms" element={<PrivateRoute><GymsPage /></PrivateRoute>} />
           <Route path="/progress" element={<PrivateRoute><ProgressTrackingPage /></PrivateRoute>} />
           <Route path="/my-gym" element={<PrivateRoute><MyGymPage /></PrivateRoute>} />
+          <Route path="/coach/:coachId" element={<PrivateRoute><CoachProfilePage /></PrivateRoute>} />
           <Route path="/branch-details" element={<PrivateRoute><BranchDetailsPage /></PrivateRoute>} />
           <Route path="/membership" element={<PrivateRoute><MembershipPage /></PrivateRoute>} />
           <Route path="/membership/payment" element={<PrivateRoute><PaymentPage /></PrivateRoute>} />

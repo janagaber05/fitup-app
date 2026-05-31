@@ -1,6 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BottomNav from "../components/BottomNav";
+import { addBooking, buildBookingRef, cancelBooking, findBookingConflict, formatBookingConflictMessage } from "../data/bookings";
+import { coachToBookingRef, getCoachById } from "../data/gymCoaches";
 import "./MembershipPage.css";
 
 const FREEZE_USAGE_KEY = "fitup-membership-freeze-used-days";
@@ -37,6 +39,9 @@ const EMS_PACKAGE_KEY = "fitup-ems-active-package";
 const EMS_BOOKINGS_KEY = "fitup-ems-package-bookings";
 const EMS_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const EMS_TIMES = ["09:00 AM", "11:00 AM", "01:00 PM", "04:00 PM", "07:00 PM"];
+const EMS_STARTER_COACH = coachToBookingRef(getCoachById("sarah-connor"));
+const EMS_PRO_COACH = coachToBookingRef(getCoachById("nora-blake"));
+
 const EMS_PACKAGE_OPTIONS = [
   {
     id: "starter",
@@ -44,7 +49,7 @@ const EMS_PACKAGE_OPTIONS = [
     price: 199,
     period: "/month",
     sessionsPerMonth: 4,
-    coach: { name: "Sarah Johnson", specialty: "EMS Fundamentals" },
+    coach: EMS_STARTER_COACH,
   },
   {
     id: "pro",
@@ -52,7 +57,7 @@ const EMS_PACKAGE_OPTIONS = [
     price: 299,
     period: "/month",
     sessionsPerMonth: 8,
-    coach: { name: "Nora Blake", specialty: "Strength & Fat Loss" },
+    coach: EMS_PRO_COACH,
   },
 ];
 
@@ -297,18 +302,57 @@ function MembershipPage() {
       return;
     }
 
+    const conflict = findBookingConflict(emsDay, emsTime);
+    if (conflict) {
+      setNotice(formatBookingConflictMessage(conflict, emsDay, emsTime));
+      return;
+    }
+
+    const bookingId = `ems-booking-${Date.now()}`;
     const booking = {
-      id: `ems-booking-${Date.now()}`,
+      id: bookingId,
       title: "EMS Package Session",
       when: `${emsDay} • ${emsTime}`,
       coach: activeEmsPackage.coach?.name || "Assigned Coach",
     };
+    const saved = addBooking({
+      id: bookingId,
+      type: "program",
+      kind: "EMS Program",
+      title: activeEmsPackage.name || "EMS Package Session",
+      subtitle: `Session with ${booking.coach}`,
+      dateLabel: emsDay,
+      when: emsTime,
+      duration: "20 min",
+      location: "EMS Studio",
+      priceLabel: "Included in package",
+      bookingRef: buildBookingRef(),
+      coach: booking.coach,
+      creditSource: "ems-package",
+      legacySource: "ems",
+    });
+    if (!saved) {
+      setNotice(formatBookingConflictMessage({ title: "EMS Session" }, emsDay, emsTime));
+      return;
+    }
     const nextPackage = { ...activeEmsPackage, usedSessions: activeEmsPackage.usedSessions + 1 };
     setEmsBookings((prev) => [booking, ...prev]);
     setActiveEmsPackage(nextPackage);
     localStorage.setItem(EMS_PACKAGE_KEY, JSON.stringify(nextPackage));
     setNotice(`EMS session booked for ${emsDay} at ${emsTime}.`);
   }, [activeEmsPackage, emsDay, emsTime]);
+
+  const cancelEmsBooking = (bookingId) => {
+    cancelBooking(bookingId);
+    setEmsBookings((prev) => prev.filter((row) => row.id !== bookingId));
+    try {
+      const raw = localStorage.getItem(EMS_PACKAGE_KEY);
+      if (raw) setActiveEmsPackage(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+    setNotice("EMS session cancelled. Your package credit was restored.");
+  };
 
   return (
     <main className="membership-page">
@@ -448,7 +492,12 @@ function MembershipPage() {
               {emsBookings.slice(0, 3).map((row) => (
                 <li key={row.id} className="membership-ems-booking-item">
                   <span>{row.when}</span>
-                  <strong>{row.coach}</strong>
+                  <div className="membership-ems-booking-actions">
+                    <strong>{row.coach}</strong>
+                    <button type="button" className="membership-ems-cancel" onClick={() => cancelEmsBooking(row.id)}>
+                      Cancel
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

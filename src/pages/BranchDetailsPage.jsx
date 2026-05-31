@@ -1,16 +1,12 @@
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
+import PhotoLightbox from "../components/PhotoLightbox";
+import { GYM_COACHES, getCoachByName } from "../data/gymCoaches";
+import { BRANCH_HERO_IMAGE, GYM_PHOTOS } from "../data/gymPhotos";
 import "./BranchDetailsPage.css";
 
-const BRANCH_IMAGE =
-  "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=1200&q=80";
 const BRANCH_IS_LADIES_ONLY = true;
-const BRANCH_PHOTOS = [
-  "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1605296867424-35fc25c9212a?auto=format&fit=crop&w=900&q=80",
-];
 
 const AMENITIES = [
   "Free Weights Zone",
@@ -27,18 +23,35 @@ const CLASSES = [
   { name: "Strength 101", time: "6:00 PM", coach: "Layla Hassan" },
 ];
 
-const COACHES = [
-  { name: "Sarah Connor", specialty: "Fat Loss & Conditioning" },
-  { name: "Layla Hassan", specialty: "Strength & Athletic Performance" },
-  { name: "Maya Patel", specialty: "Mobility & Recovery" },
-];
+const COACHES = GYM_COACHES.filter((coach) =>
+  ["Sarah Connor", "Layla Hassan", "Maya Patel"].includes(coach.name),
+);
 
 function BranchDetailsPage() {
+  const [photoIndex, setPhotoIndex] = useState(-1);
+
+  const openPhoto = useCallback((index) => {
+    setPhotoIndex(index);
+  }, []);
+
+  const closePhoto = useCallback(() => {
+    setPhotoIndex(-1);
+  }, []);
+
+  const changePhoto = useCallback((nextIndex) => {
+    if (nextIndex < 0 || nextIndex >= GYM_PHOTOS.length + 1) return;
+    setPhotoIndex(nextIndex);
+  }, []);
+
+  const branchPhotos = [{ id: "hero", src: BRANCH_HERO_IMAGE, caption: "FitUp Downtown Branch" }, ...GYM_PHOTOS];
+
   return (
     <main className="branch-page">
       <div className="branch-scroll">
         <header className="branch-hero">
-          <img src={BRANCH_IMAGE} alt="" className="branch-hero-img" />
+          <button type="button" className="branch-hero-photo-btn" onClick={() => openPhoto(0)} aria-label="Open branch photos">
+            <img src={BRANCH_HERO_IMAGE} alt="" className="branch-hero-img" />
+          </button>
           <div className="branch-hero-scrim" />
           <Link to="/gyms" className="branch-back" aria-label="Back to home">
             ←
@@ -64,8 +77,16 @@ function BranchDetailsPage() {
         <section className="branch-section">
           <h2>Branch Photos</h2>
           <div className="branch-photos-row">
-            {BRANCH_PHOTOS.map((src, idx) => (
-              <img key={idx} className="branch-photo" src={src} alt={`Branch view ${idx + 1}`} />
+            {GYM_PHOTOS.map((photo, idx) => (
+              <button
+                key={photo.id}
+                type="button"
+                className="branch-photo-btn"
+                onClick={() => openPhoto(idx + 1)}
+                aria-label={`Open photo: ${photo.caption}`}
+              >
+                <img className="branch-photo" src={photo.src} alt="" loading="lazy" />
+              </button>
             ))}
           </div>
         </section>
@@ -93,15 +114,27 @@ function BranchDetailsPage() {
         <section className="branch-section">
           <h2>Today Classes</h2>
           <div className="branch-list">
-            {CLASSES.map((item) => (
-              <article key={item.name} className="branch-list-item">
-                <div>
-                  <p className="branch-list-title">{item.name}</p>
-                  <p className="branch-list-sub">Coach: {item.coach}</p>
-                </div>
-                <span className="branch-time">{item.time}</span>
-              </article>
-            ))}
+            {CLASSES.map((item) => {
+              const coachProfile = getCoachByName(item.coach);
+              return (
+                <article key={item.name} className="branch-list-item">
+                  <div>
+                    <p className="branch-list-title">{item.name}</p>
+                    <p className="branch-list-sub">
+                      Coach:{" "}
+                      {coachProfile ? (
+                        <Link to={`/coach/${coachProfile.id}`} className="branch-coach-link">
+                          {item.coach}
+                        </Link>
+                      ) : (
+                        item.coach
+                      )}
+                    </p>
+                  </div>
+                  <span className="branch-time">{item.time}</span>
+                </article>
+              );
+            })}
           </div>
         </section>
 
@@ -109,16 +142,22 @@ function BranchDetailsPage() {
           <h2>Branch Coaches</h2>
           <div className="branch-list">
             {COACHES.map((coach) => (
-              <article key={coach.name} className="branch-list-item">
-                <div>
+              <Link key={coach.id} to={`/coach/${coach.id}`} className="branch-list-item branch-coach-item">
+                <img className="branch-coach-avatar" src={coach.image} alt="" />
+                <div className="branch-coach-copy">
                   <p className="branch-list-title">{coach.name}</p>
                   <p className="branch-list-sub">{coach.specialty}</p>
+                  <p className="branch-coach-meta">{coach.rating.toFixed(1)} ★ · View Profile</p>
                 </div>
-              </article>
+                <span className="branch-coach-chevron" aria-hidden="true">
+                  ›
+                </span>
+              </Link>
             ))}
           </div>
         </section>
       </div>
+      <PhotoLightbox photos={branchPhotos} index={photoIndex} onClose={closePhoto} onChange={changePhoto} />
       <BottomNav activeTab="home" />
     </main>
   );

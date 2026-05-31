@@ -1,13 +1,21 @@
 .branch-page {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   min-height: 100%;
+  overflow: hidden;
   background: #121212;
   color: #f4f5f7;
 }
 
 .branch-scroll {
+  width: 100%;
+  max-width: 100%;
   height: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 24px);
   scrollbar-width: none;
 }
@@ -18,7 +26,9 @@
 
 .branch-hero {
   position: relative;
-  min-height: 230px;
+  width: 100%;
+  min-height: clamp(200px, 38vh, 280px);
+  max-height: min(42vh, 320px);
 }
 
 .branch-hero-img {
@@ -27,36 +37,63 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
+}
+
+.branch-hero-photo-btn {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.branch-hero-photo-btn:focus-visible {
+  outline: 2px solid #ff6f50;
+  outline-offset: -2px;
 }
 
 .branch-hero-scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(18, 18, 18, 0.15) 0%, rgba(18, 18, 18, 0.9) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(18, 18, 18, 0.12) 0%,
+    rgba(18, 18, 18, 0.35) 45%,
+    rgba(18, 18, 18, 0.92) 100%
+  );
 }
 
 .branch-back {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: 16px;
   z-index: 2;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   display: grid;
   place-items: center;
   text-decoration: none;
-  background: rgba(20, 20, 20, 0.6);
+  background: rgba(20, 20, 20, 0.65);
   color: #fff;
+  font-size: 18px;
   font-weight: 800;
+  line-height: 1;
 }
 
 .branch-hero-content {
   position: absolute;
-  left: 14px;
-  right: 14px;
+  left: 16px;
+  right: 16px;
   bottom: 16px;
   z-index: 2;
+  min-width: 0;
 }
 
 .branch-badge {
@@ -71,14 +108,18 @@
 
 .branch-hero-content h1 {
   margin: 9px 0 4px;
-  font-size: 24px;
+  font-size: clamp(20px, 5.5vw, 24px);
+  font-weight: 800;
   letter-spacing: -0.02em;
+  line-height: 1.2;
+  word-break: break-word;
 }
 
 .branch-hero-content p {
   margin: 0;
   color: #c9ced6;
   font-size: 13px;
+  line-height: 1.35;
 }
 
 .branch-ladies-badge {
@@ -94,16 +135,24 @@
 }
 
 .branch-section {
-  padding: 14px 14px 0;
+  padding: 16px 16px 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .branch-section h2 {
   margin: 0 0 10px;
   font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .branch-card,
 .branch-list-item {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   border-radius: 14px;
   background: #1e1e1e;
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -116,8 +165,9 @@
 .branch-row {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  padding: 12px 13px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
   font-size: 12px;
 }
 
@@ -126,17 +176,24 @@
 }
 
 .branch-row span {
+  flex-shrink: 0;
   color: #9ea3ab;
+  min-width: 72px;
 }
 
 .branch-row strong {
+  flex: 1;
+  min-width: 0;
   color: #f4f5f7;
   text-align: right;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .branch-chip-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -144,38 +201,51 @@
   border-radius: 12px;
   background: #1e1e1e;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 10px 10px;
+  padding: 10px 8px;
   font-size: 12px;
+  line-height: 1.35;
   color: #d5d9e0;
   text-align: center;
+  word-break: break-word;
 }
 
 .branch-list {
   display: grid;
   gap: 8px;
+  width: 100%;
 }
 
 .branch-list-item {
-  padding: 12px 12px;
+  padding: 12px 14px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.branch-list-item > div {
+  flex: 1;
+  min-width: 0;
 }
 
 .branch-list-title {
   margin: 0;
   font-size: 14px;
   font-weight: 700;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .branch-list-sub {
   margin: 4px 0 0;
   font-size: 12px;
   color: #9ea3ab;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .branch-time {
+  flex-shrink: 0;
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(255, 111, 80, 0.18);
@@ -183,14 +253,58 @@
   color: #ff9a7a;
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.branch-coach-link {
+  color: #ff9a7a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.branch-coach-item {
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.branch-coach-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 111, 80, 0.35);
+}
+
+.branch-coach-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.branch-coach-meta {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ff9a7a;
+}
+
+.branch-coach-chevron {
+  flex-shrink: 0;
+  font-size: 22px;
+  font-weight: 300;
+  color: #7a7d85;
+  line-height: 1;
 }
 
 .branch-photos-row {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  margin: 0 -16px;
+  padding: 0 16px 4px;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .branch-photos-row::-webkit-scrollbar {
@@ -199,9 +313,113 @@
 
 .branch-photo {
   flex-shrink: 0;
-  width: 168px;
-  height: 120px;
+  width: clamp(140px, 42vw, 168px);
+  height: clamp(100px, 28vw, 120px);
   border-radius: 14px;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.branch-photo-btn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 14px;
+}
+
+.branch-photo-btn:focus-visible {
+  outline: 2px solid #ff6f50;
+  outline-offset: 2px;
+}
+
+@media (max-width: 420px) {
+  .branch-section {
+    padding: 14px 16px 0;
+  }
+
+  .branch-section h2 {
+    font-size: 16px;
+  }
+
+  .branch-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 11px 12px;
+  }
+
+  .branch-row span {
+    min-width: 0;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .branch-row strong {
+    text-align: left;
+    font-size: 13px;
+  }
+
+  .branch-list-item {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .branch-time {
+    margin-left: auto;
+  }
+
+  .branch-chip {
+    font-size: 11px;
+    padding: 9px 6px;
+  }
+}
+
+@media (max-width: 360px) {
+  .branch-hero {
+    min-height: clamp(180px, 34vh, 240px);
+    max-height: min(38vh, 260px);
+  }
+
+  .branch-hero-content h1 {
+    font-size: 19px;
+  }
+
+  .branch-section {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .branch-photos-row {
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .branch-photo {
+    width: 132px;
+    height: 96px;
+  }
+
+  .branch-chip-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .branch-list-item {
+    padding: 10px 12px;
+  }
+
+  .branch-list-title {
+    font-size: 13px;
+  }
+
+  .branch-time {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
 }

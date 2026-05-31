@@ -1,9 +1,11 @@
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
+import PhotoLightbox from "../components/PhotoLightbox";
+import { GYM_COACHES } from "../data/gymCoaches";
+import { GYM_HERO_IMAGE, GYM_PHOTOS } from "../data/gymPhotos";
+import { MEMBER_BRANCH } from "../data/memberProfile";
 import "./MyGymPage.css";
-
-const HERO_IMG =
-  "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=80";
 
 function FacilityWifi() {
   return (
@@ -182,11 +184,30 @@ function StarRow() {
 }
 
 function MyGymPage() {
+  const [photoIndex, setPhotoIndex] = useState(-1);
+
+  const openPhoto = useCallback((index) => {
+    setPhotoIndex(index);
+  }, []);
+
+  const closePhoto = useCallback(() => {
+    setPhotoIndex(-1);
+  }, []);
+
+  const changePhoto = useCallback((nextIndex) => {
+    if (nextIndex < 0 || nextIndex >= GYM_PHOTOS.length + 1) return;
+    setPhotoIndex(nextIndex);
+  }, []);
+
+  const heroPhotos = [{ id: "hero", src: GYM_HERO_IMAGE, caption: "FITUP Premier" }, ...GYM_PHOTOS];
+
   return (
     <main className="my-gym-page">
       <div className="my-gym-scroll">
         <header className="gym-hero">
-          <img className="gym-hero-img" src={HERO_IMG} alt="" />
+          <button type="button" className="gym-hero-photo-btn" onClick={() => openPhoto(0)} aria-label="Open gym photos">
+            <img className="gym-hero-img" src={GYM_HERO_IMAGE} alt="" />
+          </button>
           <div className="gym-hero-scrim" />
           <Link to="/gyms" className="gym-back" aria-label="Back to home">
             <svg className="gym-back-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
@@ -215,7 +236,7 @@ function MyGymPage() {
                   />
                   <circle cx="12" cy="11" r="2.5" fill="currentColor" />
                 </svg>
-                <span>Downtown Branch</span>
+                <span>{MEMBER_BRANCH}</span>
                 <svg viewBox="0 0 24 24" className="gym-chevron" aria-hidden="true">
                   <path
                     d="M6 9l6 6 6-6"
@@ -286,6 +307,25 @@ function MyGymPage() {
             </Link>
           </section>
 
+          <section className="gym-section gym-section-photos">
+            <h2 className="gym-section-title">Gym Photos</h2>
+            <div className="gym-photos-shell">
+              <div className="gym-photos-row">
+                {GYM_PHOTOS.map((photo, idx) => (
+                  <button
+                    key={photo.id}
+                    type="button"
+                    className="gym-photo-btn"
+                    onClick={() => openPhoto(idx + 1)}
+                    aria-label={`Open photo: ${photo.caption}`}
+                  >
+                    <img className="gym-photo-thumb" src={photo.src} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
           <section className="gym-section">
             <h2 className="gym-section-title">Opening Hours</h2>
             <div className="hours-card">
@@ -301,6 +341,38 @@ function MyGymPage() {
                 <span>Sunday</span>
                 <strong>7:00 AM – 9:00 PM</strong>
               </div>
+            </div>
+          </section>
+
+          <section className="gym-section">
+            <div className="gym-section-head">
+              <h2 className="gym-section-title">Our Coaches</h2>
+              <Link to="/branch-details" className="gym-section-link">
+                View Branch
+              </Link>
+            </div>
+            <div className="gym-coach-list">
+              {GYM_COACHES.map((coach) => (
+                <Link key={coach.id} to={`/coach/${coach.id}`} className="gym-coach-card">
+                  <img className="gym-coach-avatar" src={coach.image} alt="" />
+                  <div className="gym-coach-copy">
+                    <span className="gym-coach-name">{coach.name}</span>
+                    <span className="gym-coach-specialty">{coach.specialty}</span>
+                    <span className="gym-coach-meta">
+                      {coach.rating.toFixed(1)} ★ · ${coach.price}/session
+                    </span>
+                  </div>
+                  <svg viewBox="0 0 24 24" className="gym-coach-chevron" aria-hidden="true">
+                    <path
+                      d="M9 6l6 6-6 6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </Link>
+              ))}
             </div>
           </section>
 
@@ -340,6 +412,7 @@ function MyGymPage() {
           </section>
         </div>
       </div>
+      <PhotoLightbox photos={heroPhotos} index={photoIndex} onClose={closePhoto} onChange={changePhoto} />
       <BottomNav activeTab="my-gym" />
     </main>
   );

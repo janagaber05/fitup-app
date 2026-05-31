@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
+import {
+  MEMBER_AVATAR,
+  MEMBER_BRANCH,
+  MEMBER_COACH,
+  MEMBER_PLAN,
+  loadStoredProfileInfo,
+} from "../data/memberProfile";
+import { addBooking, buildBookingRef, cancelBooking, findBookingConflict, formatBookingConflictMessage } from "../data/bookings";
 import "./ProfilePage.css";
 
-const AVATAR =
-  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80";
-const COACH_AVATAR =
-  "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=160&q=80";
+const COACH_NAME = MEMBER_COACH.name;
+const COACH_AVATAR = MEMBER_COACH.avatar;
+const COACH_SPECIALTY = MEMBER_COACH.specialty;
 
-const COACH_NAME = "Sarah Johnson";
-
-const FAVORITE_GYM = "Downtown";
+const FAVORITE_GYM = MEMBER_BRANCH;
 
 const PRIVATE_PACKAGES = [
   { id: "1", title: "1 Session", sessions: 1, amount: 75, price: "$75" },
@@ -24,7 +29,7 @@ const CHAT_INITIAL = [
   {
     id: "seed-1",
     role: "coach",
-    text: "Hey Alex! How was your workout today?",
+    text: "Hey Lina! How was your workout today?",
     time: "10:30 AM",
   },
   {
@@ -77,17 +82,6 @@ const HELP_FAQS = [
 function formatChatTime(d = new Date()) {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
-
-const DEFAULT_PROFILE_INFO = {
-  fullName: "Alex Morgan",
-  email: "alex.morgan@example.com",
-  phone: "+1 (555) 123-4567",
-  dob: "January 15, 1995",
-  gender: "Male",
-  fitnessGoals: "Build Muscle, Increase Endurance",
-  injuries: "",
-  illnesses: "",
-};
 
 const QUICK_ACTIONS = [
   { id: "notif", label: "Notifications", icon: "bell", danger: false },
@@ -177,14 +171,7 @@ function ProfilePage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [messages, setMessages] = useState(CHAT_INITIAL);
   const [draft, setDraft] = useState("");
-  const [profileInfo, setProfileInfo] = useState(() => {
-    try {
-      const raw = localStorage.getItem(PROFILE_INFO_KEY);
-      return raw ? { ...DEFAULT_PROFILE_INFO, ...JSON.parse(raw) } : DEFAULT_PROFILE_INFO;
-    } catch {
-      return DEFAULT_PROFILE_INFO;
-    }
-  });
+  const [profileInfo, setProfileInfo] = useState(() => loadStoredProfileInfo(PROFILE_INFO_KEY));
   const [editDraft, setEditDraft] = useState(profileInfo);
   const [bookNotice, setBookNotice] = useState("");
   const [bookingDay, setBookingDay] = useState(PRIVATE_DAYS[0]);
@@ -407,13 +394,38 @@ function ProfilePage() {
       setBookNotice("No included private sessions left this month. Upgrade or buy more.");
       return;
     }
+    const conflict = findBookingConflict(bookingDay, bookingTime);
+    if (conflict) {
+      setBookNotice(formatBookingConflictMessage(conflict, bookingDay, bookingTime));
+      return;
+    }
+    const bookingId = `profile-book-${Date.now()}`;
+    const saved = addBooking({
+      id: bookingId,
+      type: "private",
+      kind: "Private Session",
+      title: `Session with ${COACH_NAME}`,
+      subtitle: COACH_SPECIALTY,
+      dateLabel: bookingDay,
+      when: bookingTime,
+      duration: "60 min",
+      location: "Private Training Zone",
+      priceLabel: "Included in plan",
+      bookingRef: buildBookingRef(),
+      creditSource: "profile-included",
+      legacySource: "profile",
+    });
+    if (!saved) {
+      setBookNotice(formatBookingConflictMessage({ title: "Private Session" }, bookingDay, bookingTime));
+      return;
+    }
     setMonthlyPrivateUsage((prev) => {
       const base = prev.cycle === currentCycle ? prev : { cycle: currentCycle, used: 0 };
       return { cycle: currentCycle, used: base.used + 1 };
     });
     setPrivateBookings((prev) => [
       {
-        id: `profile-book-${Date.now()}`,
+        id: bookingId,
         day: bookingDay,
         time: bookingTime,
         source: "Included session",
@@ -428,10 +440,35 @@ function ProfilePage() {
       setBookNotice("No extra private sessions available. Buy a package first.");
       return;
     }
+    const conflict = findBookingConflict(bookingDay, bookingTime);
+    if (conflict) {
+      setBookNotice(formatBookingConflictMessage(conflict, bookingDay, bookingTime));
+      return;
+    }
+    const bookingId = `profile-book-${Date.now()}`;
+    const saved = addBooking({
+      id: bookingId,
+      type: "private",
+      kind: "Private Session",
+      title: `Session with ${COACH_NAME}`,
+      subtitle: COACH_SPECIALTY,
+      dateLabel: bookingDay,
+      when: bookingTime,
+      duration: "60 min",
+      location: "Private Training Zone",
+      priceLabel: "Purchased session",
+      bookingRef: buildBookingRef(),
+      creditSource: "profile-purchased",
+      legacySource: "profile",
+    });
+    if (!saved) {
+      setBookNotice(formatBookingConflictMessage({ title: "Private Session" }, bookingDay, bookingTime));
+      return;
+    }
     setExtraPrivateCredits((prev) => prev - 1);
     setPrivateBookings((prev) => [
       {
-        id: `profile-book-${Date.now()}`,
+        id: bookingId,
         day: bookingDay,
         time: bookingTime,
         source: "Purchased session",
@@ -439,6 +476,21 @@ function ProfilePage() {
       ...prev,
     ]);
     setBookNotice(`Private session booked with ${COACH_NAME} on ${bookingDay} at ${bookingTime}.`);
+  };
+
+  const cancelPrivateBooking = (bookingId) => {
+    cancelBooking(bookingId);
+    setPrivateBookings((prev) => prev.filter((row) => row.id !== bookingId));
+    try {
+      const usageRaw = localStorage.getItem(PRIVATE_SESSIONS_USAGE_KEY);
+      if (usageRaw) setMonthlyPrivateUsage(JSON.parse(usageRaw));
+      const creditsRaw = localStorage.getItem(PRIVATE_SESSIONS_CREDITS_KEY);
+      const credits = Number(creditsRaw);
+      if (Number.isFinite(credits)) setExtraPrivateCredits(credits);
+    } catch {
+      /* ignore */
+    }
+    setBookNotice("Private session booking cancelled.");
   };
 
   const buyPrivatePackage = (pkg) => {
@@ -562,10 +614,10 @@ function ProfilePage() {
         <section className="profile-hero-card">
           <div className="profile-hero-glow" aria-hidden="true" />
           <div className="profile-hero-top">
-            <img className="profile-avatar" src={AVATAR} alt="" />
+            <img className="profile-avatar" src={MEMBER_AVATAR} alt="" />
             <div className="profile-hero-text">
-              <h2 className="profile-name">Alex Morgan</h2>
-              <span className="profile-member-badge">Active Member</span>
+              <h2 className="profile-name">{profileInfo.fullName}</h2>
+              <span className="profile-member-badge">Active Member · {MEMBER_PLAN}</span>
             </div>
           </div>
           <div className="profile-stats">
@@ -585,19 +637,7 @@ function ProfilePage() {
               <span className="profile-stat-label">Favorite Gym</span>
             </div>
             <div className="profile-stat">
-              <span className="profile-stat-check-wrap" aria-hidden="true">
-                <svg viewBox="0 0 24 24" className="profile-stat-check">
-                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-                  <path
-                    d="M8.3 12.4l2.5 2.4 4.9-4.9"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
+              <span className="profile-stat-plan">{MEMBER_PLAN.split(" ")[0]}</span>
               <span className="profile-stat-label">Active Package</span>
             </div>
           </div>
@@ -628,7 +668,7 @@ function ProfilePage() {
               <img className="profile-coach-avatar" src={COACH_AVATAR} alt="" />
               <div className="profile-coach-text">
                 <span className="profile-coach-name">{COACH_NAME}</span>
-                <span className="profile-coach-role">Strength & Conditioning</span>
+                <span className="profile-coach-role">{COACH_SPECIALTY}</span>
                 <span className="profile-coach-rating">
                   <svg viewBox="0 0 24 24" className="profile-coach-star" aria-hidden="true">
                     <path
@@ -842,7 +882,12 @@ function ProfilePage() {
                       <span>
                         {row.day} • {row.time}
                       </span>
-                      <strong>{row.source}</strong>
+                      <div className="profile-private-booking-actions">
+                        <strong>{row.source}</strong>
+                        <button type="button" className="profile-private-cancel" onClick={() => cancelPrivateBooking(row.id)}>
+                          Cancel
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

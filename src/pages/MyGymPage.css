@@ -1,7 +1,11 @@
 .my-gym-page {
   position: relative;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   min-height: 100%;
+  overflow: hidden;
+  overflow-x: clip;
   background: #121212;
   color: #f4f5f7;
 }
@@ -9,8 +13,14 @@
 .my-gym-scroll {
   position: relative;
   z-index: 0;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
+  overflow-x: clip;
   overflow-y: auto;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 24px);
   scrollbar-width: none;
 }
@@ -24,8 +34,11 @@
   --hero-location: #b0b0b0;
   --hero-stars: #ffd700;
   position: relative;
-  min-height: clamp(280px, 46vh, 420px);
-  max-height: 50vh;
+  width: 100%;
+  max-width: 100%;
+  min-height: clamp(220px, 38vh, 300px);
+  max-height: min(44vh, 340px);
+  overflow: hidden;
 }
 
 .gym-hero-img {
@@ -35,6 +48,24 @@
   height: 100%;
   object-fit: cover;
   object-position: center 35%;
+}
+
+.gym-hero-photo-btn {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.gym-hero-photo-btn:focus-visible {
+  outline: 2px solid #ff6f50;
+  outline-offset: -2px;
 }
 
 .gym-hero-scrim {
@@ -52,8 +83,8 @@
 
 .gym-back {
   position: absolute;
-  top: 12px;
-  left: 14px;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: max(14px, env(safe-area-inset-left, 0px));
   z-index: 2;
   display: flex;
   align-items: center;
@@ -80,8 +111,13 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 14px;
-  padding: 0 18px 24px;
+  gap: 10px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 16px 18px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
 }
 
 .gym-hero-left {
@@ -102,7 +138,7 @@
 
 .gym-title {
   margin: 10px 0 0;
-  font-size: 27px;
+  font-size: clamp(22px, 6vw, 27px);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.08;
@@ -111,17 +147,27 @@
 
 .gym-location-row {
   margin-top: 9px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
+  max-width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--hero-location);
   cursor: pointer;
+  text-align: left;
+}
+
+.gym-location-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gym-pin {
@@ -141,8 +187,8 @@
 
 .gym-rating-box {
   flex-shrink: 0;
-  min-width: 76px;
-  padding: 12px 14px 13px;
+  min-width: 68px;
+  padding: 10px 12px 11px;
   border-radius: 14px;
   background: #1e1e1e;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -152,7 +198,7 @@
 
 .gym-rating-num {
   display: block;
-  font-size: 24px;
+  font-size: clamp(20px, 5.5vw, 24px);
   font-weight: 800;
   color: var(--hero-coral);
   letter-spacing: -0.03em;
@@ -173,11 +219,18 @@
 }
 
 .my-gym-body {
-  padding: 22px 16px 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 18px 16px 8px;
+  overflow-x: clip;
 }
 
 .gym-section {
   margin-bottom: 26px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .gym-section-last {
@@ -197,12 +250,67 @@
   line-height: 1.55;
   color: #9a9fa8;
   font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.gym-section-photos {
+  overflow: hidden;
+}
+
+.gym-photos-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.gym-photos-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  padding: 0 0 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gym-photos-row::-webkit-scrollbar {
+  display: none;
+}
+
+.gym-photo-btn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 14px;
+}
+
+.gym-photo-btn:focus-visible {
+  outline: 2px solid #ff6f50;
+  outline-offset: 0;
+}
+
+.gym-photo-thumb {
+  display: block;
+  width: 140px;
+  height: 100px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .facilities-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .facility-card {
@@ -232,6 +340,7 @@
   font-weight: 500;
   color: #b4b8c0;
   letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
 }
 
 .ems-card {
@@ -331,8 +440,10 @@
 
 .contact-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .contact-btn {
@@ -340,6 +451,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-width: 0;
   min-height: 48px;
   padding: 0 12px;
   border-radius: 14px;
@@ -359,4 +471,210 @@
 
 .contact-btn:active {
   opacity: 0.88;
+}
+
+.gym-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.gym-section-head .gym-section-title {
+  margin: 0;
+}
+
+.gym-section-link {
+  color: #ff6f50;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.gym-coach-list {
+  display: grid;
+  gap: 10px;
+}
+
+.gym-coach-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  color: inherit;
+}
+
+.gym-coach-card:active {
+  opacity: 0.92;
+}
+
+.gym-coach-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 111, 80, 0.35);
+}
+
+.gym-coach-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gym-coach-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.gym-coach-specialty {
+  font-size: 12px;
+  color: #9a9fa8;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.gym-coach-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ff9a7a;
+}
+
+.gym-coach-chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #ff6f50;
+}
+
+@media (max-width: 420px) {
+  .my-gym-body {
+    padding-top: 16px;
+  }
+
+  .gym-section {
+    margin-bottom: 22px;
+  }
+
+  .gym-section-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .gym-section-text {
+    font-size: 13px;
+  }
+
+  .facilities-grid {
+    gap: 10px;
+  }
+
+  .facility-card {
+    min-height: 92px;
+    padding: 12px 6px 10px;
+    border-radius: 16px;
+  }
+
+  .facility-label {
+    font-size: 10px;
+  }
+
+  .ems-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .gym-coach-card {
+    padding: 11px 12px;
+  }
+
+  .gym-coach-name {
+    font-size: 14px;
+  }
+
+  .contact-row {
+    gap: 8px;
+  }
+
+  .contact-btn {
+    min-height: 44px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .gym-hero {
+    min-height: clamp(190px, 34vh, 250px);
+    max-height: min(38vh, 280px);
+  }
+
+  .gym-hero-bottom {
+    gap: 8px;
+  }
+
+  .gym-title {
+    font-size: 20px;
+  }
+
+  .gym-open-badge {
+    font-size: 10px;
+    padding: 5px 11px;
+  }
+
+  .gym-rating-box {
+    min-width: 62px;
+    padding: 8px 10px 9px;
+  }
+
+  .my-gym-body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .gym-photo-thumb {
+    width: 132px;
+    height: 96px;
+  }
+
+  .facilities-grid {
+    gap: 8px;
+  }
+
+  .facility-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .facility-card {
+    min-height: 84px;
+    gap: 8px;
+  }
+
+  .hours-row {
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+
+  .hours-row strong {
+    font-size: 12px;
+  }
+
+  .gym-coach-avatar {
+    width: 46px;
+    height: 46px;
+  }
 }

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
+import { addBooking, buildBookingRef, cancelBooking, findBookingConflict, formatBookingConflictMessage, loadActiveBookings } from "../data/bookings";
+import { coachToBookingRef, getCoachById } from "../data/gymCoaches";
 import "./EmsTrainingPage.css";
 
 const HERO_IMG =
@@ -40,6 +42,9 @@ const WHY_FEATURES = [
 const EMS_PACKAGE_KEY = "fitup-ems-active-package";
 const EMS_BOOKINGS_KEY = "fitup-ems-package-bookings";
 
+const EMS_STARTER_COACH = coachToBookingRef(getCoachById("sarah-connor"));
+const EMS_PRO_COACH = coachToBookingRef(getCoachById("nora-blake"));
+
 const PACKAGE_OPTIONS = [
   {
     id: "starter",
@@ -48,7 +53,7 @@ const PACKAGE_OPTIONS = [
     period: "/month",
     sessionsPerMonth: 4,
     features: ["4 Sessions/Month", "Basic Programs", "20min Sessions", "Progress Tracking"],
-    coach: { name: "Sarah Johnson", specialty: "EMS Fundamentals", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80" },
+    coach: EMS_STARTER_COACH,
     popular: false,
   },
   {
@@ -58,15 +63,15 @@ const PACKAGE_OPTIONS = [
     period: "/month",
     sessionsPerMonth: 8,
     features: ["8 Sessions/Month", "Custom Programs", "Nutrition Guide", "Progress Tracking"],
-    coach: { name: "Nora Blake", specialty: "Strength & Fat Loss", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&q=80" },
+    coach: EMS_PRO_COACH,
     popular: true,
   },
 ];
 
 const UPCOMING = [
-  { id: "1", title: "Full Body", when: "Mar 15, 2026 • 10:00 AM", coach: "Sarah Johnson" },
-  { id: "2", title: "Full Body", when: "Mar 17, 2026 • 6:00 PM", coach: "Sarah Johnson" },
-  { id: "3", title: "Full Body", when: "Mar 20, 2026 • 9:30 AM", coach: "Nora Blake" },
+  { id: "1", title: "Full Body", when: "Mar 15, 2026 • 10:00 AM", coach: EMS_STARTER_COACH.name },
+  { id: "2", title: "Full Body", when: "Mar 17, 2026 • 6:00 PM", coach: EMS_STARTER_COACH.name },
+  { id: "3", title: "Full Body", when: "Mar 20, 2026 • 9:30 AM", coach: EMS_PRO_COACH.name },
 ];
 
 const PACKAGE_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -145,6 +150,17 @@ function EmsTrainingPage() {
   const [slotDay, setSlotDay] = useState(PACKAGE_DAYS[0]);
   const [slotTime, setSlotTime] = useState(PACKAGE_TIMES[0]);
   const [notice, setNotice] = useState("");
+  const [bookingTick, setBookingTick] = useState(0);
+  const [dismissedSeedIds, setDismissedSeedIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem("fitup-ems-dismissed-seeds");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const refreshBookings = () => setBookingTick((v) => v + 1);
 
   useEffect(() => {
     localStorage.setItem(EMS_PACKAGE_KEY, JSON.stringify(activePackage));
@@ -153,6 +169,10 @@ function EmsTrainingPage() {
   useEffect(() => {
     localStorage.setItem(EMS_BOOKINGS_KEY, JSON.stringify(packageBookings));
   }, [packageBookings]);
+
+  useEffect(() => {
+    localStorage.setItem("fitup-ems-dismissed-seeds", JSON.stringify(dismissedSeedIds));
+  }, [dismissedSeedIds]);
 
   useEffect(() => {
     if (!selectedPkg) return undefined;
@@ -171,7 +191,31 @@ function EmsTrainingPage() {
     return Math.min(100, Math.round((activePackage.usedSessions / activePackage.sessionsPerMonth) * 100));
   }, [activePackage]);
 
-  const mergedUpcoming = packageBookings.length > 0 ? packageBookings : UPCOMING;
+  const mergedUpcoming = useMemo(() => {
+    const userProgramBookings = loadActiveBookings().filter((b) => b.type === "program");
+    if (userProgramBookings.length > 0) {
+      return userProgramBookings.map((b) => ({
+        id: b.id,
+        title: b.title,
+        when: `${b.dateLabel} • ${b.when}`,
+        coach: b.coach || b.subtitle,
+        cancellable: true,
+        bookingId: b.id,
+      }));
+    }
+    if (packageBookings.length > 0) {
+      return packageBookings.map((row) => ({
+        ...row,
+        cancellable: true,
+        bookingId: row.id,
+      }));
+    }
+    return UPCOMING.filter((row) => !dismissedSeedIds.includes(row.id)).map((row) => ({
+      ...row,
+      cancellable: true,
+      bookingId: null,
+    }));
+  }, [packageBookings, dismissedSeedIds, bookingTick]);
 
   const activatePackage = useCallback(
     (pkg) => {
@@ -221,15 +265,60 @@ function EmsTrainingPage() {
       setNotice("All package sessions are used. Upgrade or renew to continue.");
       return;
     }
+    const conflict = findBookingConflict(slotDay, slotTime);
+    if (conflict) {
+      setNotice(formatBookingConflictMessage(conflict, slotDay, slotTime));
+      return;
+    }
+    const bookingId = `pkg-${Date.now()}`;
     const entry = {
-      id: `pkg-${Date.now()}`,
+      id: bookingId,
       title: "EMS Package Session",
       when: `${slotDay} • ${slotTime}`,
       coach: activePackage.coach.name,
     };
+    const saved = addBooking({
+      id: bookingId,
+      type: "program",
+      kind: "EMS Program",
+      title: activePackage.name,
+      subtitle: `Session with ${activePackage.coach.name}`,
+      dateLabel: slotDay,
+      when: slotTime,
+      duration: "20 min",
+      location: "EMS Studio",
+      priceLabel: "Included in package",
+      bookingRef: buildBookingRef(),
+      coach: activePackage.coach.name,
+      creditSource: "ems-package",
+      legacySource: "ems",
+    });
+    if (!saved) {
+      setNotice(formatBookingConflictMessage({ title: activePackage.name }, slotDay, slotTime));
+      return;
+    }
     setPackageBookings((prev) => [entry, ...prev]);
     setActivePackage((prev) => ({ ...prev, usedSessions: prev.usedSessions + 1 }));
+    refreshBookings();
     setNotice(`Session booked for ${slotDay} at ${slotTime}.`);
+  };
+
+  const cancelProgramBooking = (row) => {
+    if (row.bookingId) {
+      cancelBooking(row.bookingId);
+      setPackageBookings((prev) => prev.filter((item) => item.id !== row.bookingId));
+      try {
+        const raw = localStorage.getItem(EMS_PACKAGE_KEY);
+        if (raw) setActivePackage(JSON.parse(raw));
+      } catch {
+        /* ignore */
+      }
+      refreshBookings();
+      setNotice("Program session cancelled. Your package credit was restored.");
+      return;
+    }
+    setDismissedSeedIds((prev) => [...prev, row.id]);
+    setNotice("Session removed from your upcoming list.");
   };
 
   return (
@@ -382,7 +471,7 @@ function EmsTrainingPage() {
           <ul className="ems-upcoming-list">
             {mergedUpcoming.map((row) => (
               <li key={row.id}>
-                <button type="button" className="ems-upcoming-row">
+                <article className="ems-upcoming-row">
                   <span className="ems-upcoming-icon">
                     <WhyIcon type="bolt" />
                   </span>
@@ -403,10 +492,10 @@ function EmsTrainingPage() {
                       {row.coach}
                     </span>
                   </span>
-                  <span className="ems-upcoming-chevron" aria-hidden="true">
-                    ›
-                  </span>
-                </button>
+                  <button type="button" className="ems-upcoming-cancel" onClick={() => cancelProgramBooking(row)}>
+                    Cancel
+                  </button>
+                </article>
               </li>
             ))}
           </ul>

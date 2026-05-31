@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import BottomNav from "../components/BottomNav";
+import { MEMBER_AVATAR, MEMBER_BRANCH, MEMBER_COACH, MEMBER_NAME, MEMBER_PLAN } from "../data/memberProfile";
 import { parseArDeepLink } from "../utils/arQr";
 import "./GymsPage.css";
 
@@ -143,23 +144,19 @@ function GymsPage() {
         <section className="membership-section">
           <header className="top-bar">
             <div className="profile-wrap">
-              <div className="avatar-ring">
+              <Link to="/profile" className="avatar-ring" aria-label="View profile">
                 <img
                   className="avatar"
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80"
-                  alt="Lina Morgan"
+                  src={MEMBER_AVATAR}
+                  alt={MEMBER_NAME}
                 />
-              </div>
+              </Link>
               <div>
-                <h1 className="profile-name">Lina Morgan</h1>
+                <h1 className="profile-name">{MEMBER_NAME}</h1>
                 <p className="profile-subtitle">GOOD MORNING</p>
               </div>
             </div>
-            <button
-              className="icon-btn"
-              type="button"
-              aria-label="Notifications"
-            >
+            <Link to="/notifications" className="icon-btn" aria-label="Notifications">
               <svg
                 className="bell-icon"
                 viewBox="0 0 24 24"
@@ -183,14 +180,14 @@ function GymsPage() {
                 />
                 <circle cx="17.5" cy="7.5" r="2.6" fill="#ff6f50" />
               </svg>
-            </button>
+            </Link>
           </header>
 
           <section className="plan-card">
             <div className="plan-head">
               <div>
                 <p className="muted-label">Current Plan</p>
-                <h2 className="plan-title">Premium All-Access</h2>
+                <h2 className="plan-title">{MEMBER_PLAN}</h2>
               </div>
               <span className="status-pill">Active</span>
             </div>
@@ -229,7 +226,7 @@ function GymsPage() {
               </svg>
             </div>
             <div>
-              <p className="branch-name">Downtown Branch</p>
+              <p className="branch-name">{MEMBER_BRANCH}</p>
               <p className="branch-status">● Quote Quiet</p>
             </div>
           </div>
@@ -322,7 +319,7 @@ function GymsPage() {
         <section className="upnext-card">
           <div className="upnext-left">
             <p className="upnext-title">HIIT Advanced</p>
-            <p className="upnext-subtitle">with Sarah Connor</p>
+            <p className="upnext-subtitle">with {MEMBER_COACH.name}</p>
             <div className="upnext-meta">
               <span className="meta-item">
                 <svg viewBox="0 0 24 24" className="meta-icon" aria-hidden="true">
@@ -385,24 +382,6 @@ function GymsPage() {
           </Link>
         </section>
       </section>
-
-      <button type="button" className="fab" aria-label="Open quick action">
-        <svg viewBox="0 0 24 24" className="fab-icon" aria-hidden="true">
-          <path
-            d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M4 7.5L12 12l8-4.5M12 12v9"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-        </svg>
-      </button>
 
       {scannerOpen ? (
         <div className="ar-scan-wrap" role="presentation">

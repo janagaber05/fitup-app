@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { addBooking, findBookingConflict, formatBookingConflictMessage } from "../data/bookings";
 import "./PaymentPage.css";
 
 const BILLING_LABELS = { monthly: "Monthly", q3: "3 Months", q6: "6 Months", yearly: "Yearly" };
@@ -88,10 +89,24 @@ function PaymentPage() {
     window.setTimeout(() => {
       const now = new Date();
       if (bookingPayment) {
+        const when = bookingPayment.when || bookingPayment.timeLabel;
+        const saved = addBooking({
+          ...bookingPayment,
+          when,
+          duration: bookingPayment.duration || "60 min",
+          location: bookingPayment.location || "FitUp Branch",
+          priceLabel: bookingPayment.priceLabel,
+        });
         navigate(returnTo || "/book", {
           replace: true,
           state: {
-            bookingPaymentNotice: `Payment successful. ${bookingPayment.title} is booked (${bookingPayment.bookingRef}).`,
+            bookingPaymentNotice: saved
+              ? `Payment successful. ${bookingPayment.title} is booked (${bookingPayment.bookingRef}).`
+              : formatBookingConflictMessage(
+                  findBookingConflict(bookingPayment.dateLabel, when) || { title: bookingPayment.title },
+                  bookingPayment.dateLabel,
+                  when,
+                ),
           },
         });
         return;

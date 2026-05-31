@@ -163,6 +163,13 @@
   color: #ffffff;
 }
 
+.profile-stat-plan {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff6f50;
+  line-height: 1.2;
+}
+
 .profile-stat-check-wrap {
   display: grid;
   place-items: center;
@@ -763,6 +770,24 @@
 .profile-private-booking-item strong {
   color: #ffffff;
   font-size: 11px;
+}
+
+.profile-private-booking-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-private-cancel {
+  border: 1px solid rgba(255, 111, 80, 0.35);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(255, 111, 80, 0.1);
+  color: #ff9a7a;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .profile-package-card {
