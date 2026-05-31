@@ -1,4 +1,4 @@
-package com.fitup.app;
+package com.janagaber.fitup;
 
 import com.getcapacitor.BridgeActivity;
 
